@@ -1,0 +1,1271 @@
+{
+  "address": "GB8MgJJggQM7uiHwWy9nuL5AZnGbFraHVharujHKXAgk",
+  "metadata": {
+    "name": "kwita",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Kwita: kredyt kupiecki bez banku (mutual credit) na Solanie"
+  },
+  "instructions": [
+    {
+      "name": "create_circle",
+      "discriminator": [
+        186,
+        99,
+        49,
+        131,
+        31,
+        51,
+        13,
+        198
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "arg",
+                "path": "circle_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "circle_id",
+          "type": "u64"
+        },
+        {
+          "name": "deposit_amount",
+          "type": "u64"
+        },
+        {
+          "name": "sales_limit_bps",
+          "type": "u16"
+        },
+        {
+          "name": "per_counterparty_cap",
+          "type": "u64"
+        },
+        {
+          "name": "max_sales_credit",
+          "type": "u64"
+        },
+        {
+          "name": "default_after_secs",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "declare_default",
+      "discriminator": [
+        111,
+        69,
+        178,
+        74,
+        121,
+        205,
+        118,
+        251
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "writable": true
+        },
+        {
+          "name": "member",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "give_guarantee",
+      "discriminator": [
+        175,
+        80,
+        152,
+        210,
+        163,
+        83,
+        66,
+        103
+      ],
+      "accounts": [
+        {
+          "name": "guarantor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle"
+        },
+        {
+          "name": "guarantor_member",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "guarantor"
+              }
+            ]
+          }
+        },
+        {
+          "name": "beneficiary_member",
+          "writable": true
+        },
+        {
+          "name": "guarantee",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  97,
+                  110,
+                  116,
+                  101,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "guarantor"
+              },
+              {
+                "kind": "account",
+                "path": "beneficiary_member.owner",
+                "account": "Member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "join",
+      "discriminator": [
+        206,
+        55,
+        2,
+        106,
+        113,
+        220,
+        17,
+        163
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "writable": true
+        },
+        {
+          "name": "member",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "owner_token",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "leave",
+      "discriminator": [
+        59,
+        234,
+        148,
+        108,
+        107,
+        149,
+        173,
+        112
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "writable": true
+        },
+        {
+          "name": "member",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "owner_token",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "forfeit_positive",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "pay",
+      "discriminator": [
+        119,
+        18,
+        216,
+        65,
+        192,
+        117,
+        122,
+        220
+      ],
+      "accounts": [
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle"
+        },
+        {
+          "name": "buyer_member",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "buyer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "seller_member",
+          "writable": true
+        },
+        {
+          "name": "pair",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  105,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "seller_member.owner",
+                "account": "Member"
+              },
+              {
+                "kind": "account",
+                "path": "buyer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "invoice_ref",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "redeem",
+      "discriminator": [
+        184,
+        12,
+        86,
+        149,
+        70,
+        196,
+        97,
+        225
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "writable": true
+        },
+        {
+          "name": "member",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "owner_token",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_guarantee",
+      "discriminator": [
+        90,
+        175,
+        173,
+        229,
+        183,
+        148,
+        41,
+        242
+      ],
+      "accounts": [
+        {
+          "name": "guarantor",
+          "signer": true
+        },
+        {
+          "name": "circle"
+        },
+        {
+          "name": "guarantor_member",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "guarantor"
+              }
+            ]
+          }
+        },
+        {
+          "name": "beneficiary_member",
+          "writable": true
+        },
+        {
+          "name": "guarantee",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  97,
+                  110,
+                  116,
+                  101,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "guarantor"
+              },
+              {
+                "kind": "account",
+                "path": "beneficiary_member.owner",
+                "account": "Member"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Circle",
+      "discriminator": [
+        27,
+        59,
+        8,
+        117,
+        62,
+        199,
+        222,
+        252
+      ]
+    },
+    {
+      "name": "Guarantee",
+      "discriminator": [
+        198,
+        16,
+        124,
+        172,
+        230,
+        249,
+        200,
+        37
+      ]
+    },
+    {
+      "name": "Member",
+      "discriminator": [
+        54,
+        19,
+        162,
+        21,
+        29,
+        166,
+        17,
+        198
+      ]
+    },
+    {
+      "name": "Pair",
+      "discriminator": [
+        85,
+        72,
+        49,
+        176,
+        182,
+        228,
+        141,
+        82
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "CircleCreated",
+      "discriminator": [
+        210,
+        110,
+        215,
+        179,
+        247,
+        145,
+        243,
+        135
+      ]
+    },
+    {
+      "name": "GuaranteeChanged",
+      "discriminator": [
+        78,
+        232,
+        239,
+        129,
+        73,
+        35,
+        99,
+        111
+      ]
+    },
+    {
+      "name": "MemberDefaulted",
+      "discriminator": [
+        35,
+        214,
+        165,
+        144,
+        170,
+        135,
+        39,
+        136
+      ]
+    },
+    {
+      "name": "MemberJoined",
+      "discriminator": [
+        156,
+        199,
+        149,
+        88,
+        193,
+        203,
+        191,
+        210
+      ]
+    },
+    {
+      "name": "MemberLeft",
+      "discriminator": [
+        48,
+        83,
+        72,
+        92,
+        111,
+        227,
+        133,
+        142
+      ]
+    },
+    {
+      "name": "PaymentMade",
+      "discriminator": [
+        227,
+        251,
+        123,
+        16,
+        133,
+        220,
+        83,
+        242
+      ]
+    },
+    {
+      "name": "Redeemed",
+      "discriminator": [
+        14,
+        29,
+        183,
+        71,
+        31,
+        165,
+        107,
+        38
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidParams",
+      "msg": "Nieprawidłowe parametry kręgu"
+    },
+    {
+      "code": 6001,
+      "name": "ZeroAmount",
+      "msg": "Kwota musi być większa od zera"
+    },
+    {
+      "code": 6002,
+      "name": "SelfPayment",
+      "msg": "Nie można płacić samemu sobie"
+    },
+    {
+      "code": 6003,
+      "name": "NotActive",
+      "msg": "Firma nie jest aktywna w kręgu"
+    },
+    {
+      "code": 6004,
+      "name": "LimitExceeded",
+      "msg": "Przekroczony limit kredytu"
+    },
+    {
+      "code": 6005,
+      "name": "InvoiceRefTooLong",
+      "msg": "Numer faktury jest za długi (max 64 bajty)"
+    },
+    {
+      "code": 6006,
+      "name": "SelfGuarantee",
+      "msg": "Nie można poręczyć za siebie"
+    },
+    {
+      "code": 6007,
+      "name": "GuaranteeTooSmall",
+      "msg": "Poręczenie jest mniejsze niż kwota wycofania"
+    },
+    {
+      "code": 6008,
+      "name": "GuaranteeInUse",
+      "msg": "Poręczenie jest w użyciu: firma przekroczyłaby limit"
+    },
+    {
+      "code": 6009,
+      "name": "InsufficientBalance",
+      "msg": "Za małe saldo"
+    },
+    {
+      "code": 6010,
+      "name": "ReserveEmpty",
+      "msg": "Rezerwa nie ma tyle tPLN"
+    },
+    {
+      "code": 6011,
+      "name": "HasGivenGuarantees",
+      "msg": "Firma ma aktywne poręczenia za inne firmy"
+    },
+    {
+      "code": 6012,
+      "name": "DepositTooSmallToLeave",
+      "msg": "Kaucja nie pokrywa salda ujemnego"
+    },
+    {
+      "code": 6013,
+      "name": "PositiveBalance",
+      "msg": "Saldo dodatnie: wydaj je, wymień albo oddaj Rezerwie"
+    },
+    {
+      "code": 6014,
+      "name": "NotNegative",
+      "msg": "Saldo nie jest ujemne"
+    },
+    {
+      "code": 6015,
+      "name": "TooEarly",
+      "msg": "Termin niewypłacalności jeszcze nie minął"
+    },
+    {
+      "code": 6016,
+      "name": "InvalidGuaranteeAccount",
+      "msg": "Nieprawidłowe konto poręczenia"
+    },
+    {
+      "code": 6017,
+      "name": "MathOverflow",
+      "msg": "Przepełnienie arytmetyczne"
+    },
+    {
+      "code": 6018,
+      "name": "WrongCircle",
+      "msg": "Konto należy do innego kręgu"
+    }
+  ],
+  "types": [
+    {
+      "name": "Circle",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "circle_id",
+            "type": "u64"
+          },
+          {
+            "name": "collateral_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "deposit_amount",
+            "type": "u64"
+          },
+          {
+            "name": "sales_limit_bps",
+            "type": "u16"
+          },
+          {
+            "name": "per_counterparty_cap",
+            "type": "u64"
+          },
+          {
+            "name": "max_sales_credit",
+            "type": "u64"
+          },
+          {
+            "name": "default_after_secs",
+            "type": "i64"
+          },
+          {
+            "name": "reserve_balance",
+            "type": "i64"
+          },
+          {
+            "name": "reserve_usdc",
+            "type": "u64"
+          },
+          {
+            "name": "unbacked_loss",
+            "type": "u64"
+          },
+          {
+            "name": "member_count",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CircleCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "circle_id",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Guarantee",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "guarantor",
+            "type": "pubkey"
+          },
+          {
+            "name": "beneficiary",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GuaranteeChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "guarantor",
+            "type": "pubkey"
+          },
+          {
+            "name": "beneficiary",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Member",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "balance",
+            "type": "i64"
+          },
+          {
+            "name": "deposit",
+            "type": "u64"
+          },
+          {
+            "name": "counted_sales",
+            "type": "u64"
+          },
+          {
+            "name": "guarantees_given",
+            "type": "u64"
+          },
+          {
+            "name": "guarantees_received",
+            "type": "u64"
+          },
+          {
+            "name": "negative_since",
+            "type": "i64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "MemberStatus"
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MemberDefaulted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "debt",
+            "type": "u64"
+          },
+          {
+            "name": "from_deposit",
+            "type": "u64"
+          },
+          {
+            "name": "from_guarantors",
+            "type": "u64"
+          },
+          {
+            "name": "unbacked",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MemberJoined",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "deposit",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MemberLeft",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "covered_debt",
+            "type": "u64"
+          },
+          {
+            "name": "forfeited",
+            "type": "u64"
+          },
+          {
+            "name": "refunded",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MemberStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Exited"
+          },
+          {
+            "name": "Defaulted"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Pair",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "counted",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentMade",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "buyer",
+            "type": "pubkey"
+          },
+          {
+            "name": "seller",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "counted",
+            "type": "u64"
+          },
+          {
+            "name": "invoice_ref",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Redeemed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ],
+  "constants": [
+    {
+      "name": "CIRCLE_SEED",
+      "type": "bytes",
+      "value": "[99, 105, 114, 99, 108, 101]"
+    },
+    {
+      "name": "GUARANTEE_SEED",
+      "type": "bytes",
+      "value": "[103, 117, 97, 114, 97, 110, 116, 101, 101]"
+    },
+    {
+      "name": "MEMBER_SEED",
+      "type": "bytes",
+      "value": "[109, 101, 109, 98, 101, 114]"
+    },
+    {
+      "name": "PAIR_SEED",
+      "type": "bytes",
+      "value": "[112, 97, 105, 114]"
+    },
+    {
+      "name": "VAULT_SEED",
+      "type": "bytes",
+      "value": "[118, 97, 117, 108, 116]"
+    }
+  ]
+}

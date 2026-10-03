@@ -1,0 +1,24 @@
+skip_local_validator = true
+
+[toolchain]
+anchor_version = "1.2.0"
+solana_version = "3.1.10"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+kwita = "GB8MgJJggQM7uiHwWy9nuL5AZnGbFraHVharujHKXAgk"
+
+[programs.devnet]
+kwita = "GB8MgJJggQM7uiHwWy9nuL5AZnGbFraHVharujHKXAgk"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "cargo test"
+
+[hooks]

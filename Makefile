@@ -6,7 +6,7 @@ KEYPAIR_SRC := keys/$(PROGRAM)-program-keypair.json
 KEYPAIR_DST := target/deploy/$(PROGRAM)-keypair.json
 SO          := target/deploy/$(PROGRAM).so
 
-.PHONY: check keypair build test idl localnet deploy-local deploy-devnet seed-local seed-devnet smoke-local app clean
+.PHONY: check keypair build test idl localnet deploy-local deploy-devnet upgrade-devnet seed-local seed-devnet smoke-local app clean
 
 check:            ## sprawdza wersje narzędzi
 	./scripts/check-env.sh
@@ -34,6 +34,9 @@ deploy-local: build ## deploy na lokalny walidator (najpierw: make localnet)
 
 deploy-devnet: build ## deploy na devnet; max-len = rozmiar programu (oszczędza SOL)
 	solana program deploy -ud $(SO) --program-id $(KEYPAIR_DST) --max-len $$(stat -c%s $(SO))
+
+upgrade-devnet: build ## upgrade programu na devnecie; gdy program urósł: solana program extend -ud <PROGRAM_ID> 10240 (min. 10 KB)
+	solana program deploy -ud $(SO) --program-id $(KEYPAIR_DST)
 
 seed-local:       ## krąg demo na localnecie (PRESENTER=<adres Phantoma> opcjonalnie)
 	cd app && RPC_URL=http://127.0.0.1:8899 CLUSTER=localnet npm run seed

@@ -22,12 +22,12 @@ Explorer pokazuje transakcje z localnetu przez „Custom RPC URL” (`http://127
 
 ## Na devnecie
 
-- Program: [`GB8MgJJggQM7uiHwWy9nuL5AZnGbFraHVharujHKXAgk`](https://explorer.solana.com/address/GB8MgJJggQM7uiHwWy9nuL5AZnGbFraHVharujHKXAgk?cluster=devnet), deploy: [`4DJN1x7q…`](https://explorer.solana.com/tx/4DJN1x7qGccqxQN4WAs327YwwWaZUYWfRGLpi3YJ73Mf72MuyVJuZ2CFzGTYLLiCXRpKBWdgttzcrs4mWU2DgJgP?cluster=devnet).
+- Program: [`GB8MgJJggQM7uiHwWy9nuL5AZnGbFraHVharujHKXAgk`](https://explorer.solana.com/address/GB8MgJJggQM7uiHwWy9nuL5AZnGbFraHVharujHKXAgk?cluster=devnet), pierwszy deploy: [`4DJN1x7q…`](https://explorer.solana.com/tx/4DJN1x7qGccqxQN4WAs327YwwWaZUYWfRGLpi3YJ73Mf72MuyVJuZ2CFzGTYLLiCXRpKBWdgttzcrs4mWU2DgJgP?cluster=devnet), upgrade po przeglądzie kodu: 4.10.2026 (`make upgrade-devnet`).
 - Przebieg scenariusza demo (`npm run smoke` na devnecie, 4.10.2026):
-  - zakup ponad limit przechodzi dopiero po poręczeniu: [zakup](https://explorer.solana.com/tx/3pu2Ra5ETuUuqzRod9SMt7AJKPqdhg2Pizhw8z7Y4JYdKdbeS9DrCVkDT3VKdhYryMtspURDmVaaxz9JZAXawYmw?cluster=devnet), [poręczenie](https://explorer.solana.com/tx/2vxCjRz73DkBxw4CTDV6Sn6xkCTKMBuyumtsUPSnGwTSUcbjNCmRAcL35PjNBKioiJheBiW8dWEQqWQT3oKXH7vK?cluster=devnet);
-  - wyjście z kręgu z długiem pokrytym kaucją: [leave](https://explorer.solana.com/tx/3a5EXDsi7e1Uum3jLdngEEVZo5z1ssdguY5G9Qck5nU5Whautva72BDvcWKTqK61eTkHRBS1m37jysmrh3cmJobN?cluster=devnet);
-  - wymiana jednostek na tPLN z Rezerwy: [redeem](https://explorer.solana.com/tx/3E4xHt9en3Pz3VWbWg84FDqyuqMTBd2i4So1WubW6m68QYq3XJvPK5Y56MUa7cZSopENksMWut8ZEGxzKp8fdFE4?cluster=devnet);
-  - niewypłacalność ogłoszona przez inną firmę, dług przechodzi na poręczyciela: [declare_default](https://explorer.solana.com/tx/6341GFvz6qri63AMkXABRe9psmdb8uzrvrsvuFyjirXKhn6phSvavnt42SpfVbqhjLsQiF3FNZVMbmKRPRwfgTKR?cluster=devnet).
+  - zakup ponad limit przechodzi dopiero po poręczeniu: [zakup](https://explorer.solana.com/tx/xk9YFgogyHdL7RLxa8kBCg1Ki2XYtNPxBkQi5wqeCBm392Qj8EpqCom2PK4gDVoVvGK4RnQJJPNTG6j69ReT8hX?cluster=devnet), [poręczenie](https://explorer.solana.com/tx/5ZdbuKVrAoLdFgV4oWaK7Y74Zwxbra2r6Kpk1KJ78bnSeWHiwb1mDVMwSMfe8VnvoZNJT5cRmn3P1UasCCspUBgU?cluster=devnet);
+  - wyjście z kręgu z długiem pokrytym kaucją: [leave](https://explorer.solana.com/tx/3NrbCS14XaCJNnySjZYnTei4pMsGH7NBrcZL9WK9YrYY1DAP5K2E7m2ncBQk9SMGtEBTWDfUfUNtsC3YQCqq9Xru?cluster=devnet);
+  - wymiana jednostek na tPLN z Rezerwy: [redeem](https://explorer.solana.com/tx/jFTSGR3Rs8cpU9wNSq61eHogSZWU2PeBrA55m45G89JYyHuvhU7zDaUbNXEFCUtUWfcxVmHPfUdVKjbcaDqpQvw?cluster=devnet);
+  - niewypłacalność ogłoszona przez inną firmę, dług przechodzi na poręczyciela: [declare_default](https://explorer.solana.com/tx/hR7d2yht9iL3atUeKx9Xvp3cT3bkV8rJywZmJcuKYYRvibmzT4roTamhDzZjbNu2XnwvFtoPJRX3NmrrpLWeKSe?cluster=devnet).
 - Demo z frontu na devnecie: `PRESENTER=<adres Phantoma> make seed-devnet`, potem `make app`. W Phantomie: Ustawienia → Developer Settings → Testnet Mode, sieć Solana Devnet.
 
 ---

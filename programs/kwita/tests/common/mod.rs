@@ -209,6 +209,39 @@ impl Env {
         send(&mut self.svm, &[i], &kp, &[])
     }
 
+    pub fn give(&mut self, g: &Firm, b: &Firm, amount: u64) -> Result<(), FailedTransactionMetadata> {
+        let i = ix(
+            kwita::instruction::GiveGuarantee { amount }.data(),
+            kwita::accounts::GiveGuarantee {
+                guarantor: g.key(),
+                circle: self.circle,
+                guarantor_member: member_pda(&self.circle, &g.key()),
+                beneficiary_member: member_pda(&self.circle, &b.key()),
+                guarantee: guarantee_pda(&self.circle, &g.key(), &b.key()),
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        );
+        let kp = g.kp.insecure_clone();
+        send(&mut self.svm, &[i], &kp, &[])
+    }
+
+    pub fn withdraw(&mut self, g: &Firm, b: &Firm, amount: u64) -> Result<(), FailedTransactionMetadata> {
+        let i = ix(
+            kwita::instruction::WithdrawGuarantee { amount }.data(),
+            kwita::accounts::WithdrawGuarantee {
+                guarantor: g.key(),
+                circle: self.circle,
+                guarantor_member: member_pda(&self.circle, &g.key()),
+                beneficiary_member: member_pda(&self.circle, &b.key()),
+                guarantee: guarantee_pda(&self.circle, &g.key(), &b.key()),
+            }
+            .to_account_metas(None),
+        );
+        let kp = g.kp.insecure_clone();
+        send(&mut self.svm, &[i], &kp, &[])
+    }
+
     pub fn circle_state(&self) -> kwita::Circle {
         let acc = self.svm.get_account(&self.circle).unwrap();
         kwita::Circle::try_deserialize(&mut acc.data.as_slice()).unwrap()

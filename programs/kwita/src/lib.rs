@@ -43,4 +43,12 @@ pub mod kwita {
     pub fn pay(ctx: Context<Pay>, amount: u64, invoice_ref: String) -> Result<()> {
         crate::instructions::pay::handle_pay(ctx, amount, invoice_ref)
     }
+
+    pub fn give_guarantee(ctx: Context<GiveGuarantee>, amount: u64) -> Result<()> {
+        crate::instructions::guarantee::handle_give_guarantee(ctx, amount)
+    }
+
+    pub fn withdraw_guarantee(ctx: Context<WithdrawGuarantee>, amount: u64) -> Result<()> {
+        crate::instructions::guarantee::handle_withdraw_guarantee(ctx, amount)
+    }
 }

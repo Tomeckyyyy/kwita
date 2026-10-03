@@ -59,4 +59,8 @@ pub mod kwita {
     pub fn leave(ctx: Context<Leave>, forfeit_positive: bool) -> Result<()> {
         crate::instructions::leave::handle_leave(ctx, forfeit_positive)
     }
+
+    pub fn declare_default<'info>(ctx: Context<'info, DeclareDefault<'info>>) -> Result<()> {
+        crate::instructions::declare_default::handle_declare_default(ctx)
+    }
 }

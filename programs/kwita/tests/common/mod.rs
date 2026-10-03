@@ -268,6 +268,28 @@ impl Env {
         send(&mut self.svm, &[i], &kp, &[])
     }
 
+    pub fn default_member(
+        &mut self,
+        caller: &Firm,
+        target: &Firm,
+        guarantors: &[&Firm],
+    ) -> Result<(), FailedTransactionMetadata> {
+        use anchor_lang::solana_program::instruction::AccountMeta;
+        let mut metas = kwita::accounts::DeclareDefault {
+            caller: caller.key(),
+            circle: self.circle,
+            member: member_pda(&self.circle, &target.key()),
+        }
+        .to_account_metas(None);
+        for g in guarantors {
+            metas.push(AccountMeta::new(guarantee_pda(&self.circle, &g.key(), &target.key()), false));
+            metas.push(AccountMeta::new(member_pda(&self.circle, &g.key()), false));
+        }
+        let i = ix(kwita::instruction::DeclareDefault {}.data(), metas);
+        let kp = caller.kp.insecure_clone();
+        send(&mut self.svm, &[i], &kp, &[])
+    }
+
     pub fn circle_state(&self) -> kwita::Circle {
         let acc = self.svm.get_account(&self.circle).unwrap();
         kwita::Circle::try_deserialize(&mut acc.data.as_slice()).unwrap()

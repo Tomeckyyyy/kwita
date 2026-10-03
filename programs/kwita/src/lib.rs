@@ -51,4 +51,12 @@ pub mod kwita {
     pub fn withdraw_guarantee(ctx: Context<WithdrawGuarantee>, amount: u64) -> Result<()> {
         crate::instructions::guarantee::handle_withdraw_guarantee(ctx, amount)
     }
+
+    pub fn redeem(ctx: Context<Redeem>, amount: u64) -> Result<()> {
+        crate::instructions::redeem::handle_redeem(ctx, amount)
+    }
+
+    pub fn leave(ctx: Context<Leave>, forfeit_positive: bool) -> Result<()> {
+        crate::instructions::leave::handle_leave(ctx, forfeit_positive)
+    }
 }

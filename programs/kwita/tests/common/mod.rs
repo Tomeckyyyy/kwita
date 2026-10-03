@@ -242,6 +242,32 @@ impl Env {
         send(&mut self.svm, &[i], &kp, &[])
     }
 
+    fn exit_accounts(&self, f: &Firm) -> Vec<anchor_lang::solana_program::instruction::AccountMeta> {
+        kwita::accounts::Leave {
+            owner: f.key(),
+            circle: self.circle,
+            member: member_pda(&self.circle, &f.key()),
+            collateral_mint: self.mint,
+            owner_token: f.ata,
+            vault: self.vault,
+            token_program: anchor_spl::token::ID,
+        }
+        .to_account_metas(None)
+    }
+
+    pub fn leave(&mut self, f: &Firm, forfeit_positive: bool) -> Result<(), FailedTransactionMetadata> {
+        let i = ix(kwita::instruction::Leave { forfeit_positive }.data(), self.exit_accounts(f));
+        let kp = f.kp.insecure_clone();
+        send(&mut self.svm, &[i], &kp, &[])
+    }
+
+    pub fn redeem(&mut self, f: &Firm, amount: u64) -> Result<(), FailedTransactionMetadata> {
+        // Redeem ma te same konta i kolejność co Leave
+        let i = ix(kwita::instruction::Redeem { amount }.data(), self.exit_accounts(f));
+        let kp = f.kp.insecure_clone();
+        send(&mut self.svm, &[i], &kp, &[])
+    }
+
     pub fn circle_state(&self) -> kwita::Circle {
         let acc = self.svm.get_account(&self.circle).unwrap();
         kwita::Circle::try_deserialize(&mut acc.data.as_slice()).unwrap()

@@ -150,6 +150,25 @@ impl Env {
         Firm { kp, ata }
     }
 
+    pub fn join(&mut self, f: &Firm) -> Result<(), FailedTransactionMetadata> {
+        let i = ix(
+            kwita::instruction::Join {}.data(),
+            kwita::accounts::Join {
+                owner: f.key(),
+                circle: self.circle,
+                member: member_pda(&self.circle, &f.key()),
+                collateral_mint: self.mint,
+                owner_token: f.ata,
+                vault: self.vault,
+                token_program: anchor_spl::token::ID,
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        );
+        let kp = f.kp.insecure_clone();
+        send(&mut self.svm, &[i], &kp, &[])
+    }
+
     pub fn circle_state(&self) -> kwita::Circle {
         let acc = self.svm.get_account(&self.circle).unwrap();
         kwita::Circle::try_deserialize(&mut acc.data.as_slice()).unwrap()

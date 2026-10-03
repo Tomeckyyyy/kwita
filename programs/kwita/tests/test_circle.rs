@@ -22,3 +22,26 @@ fn create_circle_rejects_bad_params() {
         assert_err(res, 6000);
     }
 }
+
+#[test]
+fn join_takes_deposit_and_sets_limit() {
+    let mut env = Env::new();
+    let a = env.firm();
+    env.join(&a).unwrap();
+    let m = env.member(&a.key());
+    assert_eq!(m.balance, 0);
+    assert_eq!(m.deposit, DEPOSIT);
+    assert_eq!(m.status, kwita::MemberStatus::Active);
+    assert_eq!(m.limit(&env.circle_state()), DEPOSIT as i128);
+    assert_eq!(env.tokens(&a.ata), 800 * UNIT);
+    assert_eq!(env.circle_state().member_count, 1);
+    env.assert_invariants(&[a.key()]);
+}
+
+#[test]
+fn join_twice_fails() {
+    let mut env = Env::new();
+    let a = env.firm();
+    env.join(&a).unwrap();
+    assert!(env.join(&a).is_err());
+}

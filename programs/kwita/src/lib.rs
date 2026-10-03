@@ -35,4 +35,8 @@ pub mod kwita {
             default_after_secs,
         )
     }
+
+    pub fn join(ctx: Context<Join>) -> Result<()> {
+        crate::instructions::join::handle_join(ctx)
+    }
 }

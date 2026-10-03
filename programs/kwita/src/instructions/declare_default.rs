@@ -17,10 +17,11 @@ pub fn handle_declare_default<'info>(ctx: Context<'info, DeclareDefault<'info>>)
     let m = &mut ctx.accounts.member;
     require!(m.status == MemberStatus::Active, KwitaError::NotActive);
     require!(m.balance < 0, KwitaError::NotNegative);
-    require!(
-        now >= m.negative_since + circle.default_after_secs,
-        KwitaError::TooEarly
-    );
+    let deadline = m
+        .negative_since
+        .checked_add(circle.default_after_secs)
+        .ok_or(KwitaError::MathOverflow)?;
+    require!(now >= deadline, KwitaError::TooEarly);
 
     let debt = m.balance.unsigned_abs();
     let mut loss = debt;
@@ -56,7 +57,8 @@ pub fn handle_declare_default<'info>(ctx: Context<'info, DeclareDefault<'info>>)
                 && gm.circle == circle.key(),
             KwitaError::InvalidGuaranteeAccount
         );
-        let x = g.amount.min(loss);
+        // Niewypłacalny poręczyciel nie zapłaci: jego część przechodzi do niepokrytej straty.
+        let x = if gm.status == MemberStatus::Active { g.amount.min(loss) } else { 0 };
         if x > 0 {
             let new_balance = gm.balance - x as i64;
             if gm.balance >= 0 && new_balance < 0 {
@@ -72,6 +74,9 @@ pub fn handle_declare_default<'info>(ctx: Context<'info, DeclareDefault<'info>>)
         g.exit(&crate::ID)?;
         gm.exit(&crate::ID)?;
     }
+
+    // Wszystkie poręczenia za tę firmę muszą być podane; poręczyciel nie ucieknie, pomijając swoje.
+    require!(m.guarantees_received == 0, KwitaError::InvalidGuaranteeAccount);
 
     // 3. Reszta: niepokryta strata Rezerwy.
     circle.reserve_balance -= loss as i64;

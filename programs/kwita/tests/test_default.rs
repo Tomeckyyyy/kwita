@@ -44,14 +44,69 @@ fn default_moves_rest_to_guarantor() {
 }
 
 #[test]
-fn default_without_guarantor_accounts_records_unbacked_loss() {
+fn default_without_guarantor_accounts_rejected() {
+    // Poręczyciel nie może uciec od odpowiedzialności, pomijając swoje poręczenie.
     let (mut env, f) = Env::setup(3);
     env.give(&f[2], &f[0], 100 * UNIT).unwrap();
     env.pay(&f[0], &f[1], 280 * UNIT).unwrap();
     env.warp(DEFAULT_AFTER);
-    env.default_member(&f[1], &f[0], &[]).unwrap();
-    assert_eq!(env.circle_state().unbacked_loss, 80 * UNIT);
+    assert_err(env.default_member(&f[2], &f[0], &[]), 6016);
+}
+
+#[test]
+fn default_beyond_deposit_and_guarantee_records_unbacked_loss() {
+    let (mut env, f) = Env::setup(3);
+    env.give(&f[2], &f[0], 50 * UNIT).unwrap();
+    env.pay(&f[0], &f[1], 250 * UNIT).unwrap();
+    env.warp(DEFAULT_AFTER);
+    env.default_member(&f[1], &f[0], &[&f[2]]).unwrap();
+    assert_eq!(env.member(&f[2].key()).balance, -50 * UNIT as i64);
+    assert_eq!(env.circle_state().unbacked_loss, 0);
+    // drugi przypadek: limit 200 kaucji + 20 ze sprzedaży + 30 poręczenia; dług 250 -> 20 niepokryte
+    let (mut env, f) = Env::setup(3);
+    env.give(&f[2], &f[0], 30 * UNIT).unwrap();
+    env.pay(&f[1], &f[0], 40 * UNIT).unwrap();
+    env.pay(&f[0], &f[1], 290 * UNIT).unwrap();
+    env.warp(DEFAULT_AFTER);
+    env.default_member(&f[1], &f[0], &[&f[2]]).unwrap();
+    assert_eq!(env.circle_state().unbacked_loss, 20 * UNIT);
     env.assert_invariants(&[f[0].key(), f[1].key(), f[2].key()]);
+}
+
+#[test]
+fn defaulted_guarantor_is_not_charged() {
+    // G poręcza za B, G staje się niewypłacalny; przy niewypłacalności B dług nie trafia na G.
+    let (mut env, f) = Env::setup(4);
+    let (g, b, s) = (&f[0], &f[1], &f[2]);
+    env.give(g, b, 100 * UNIT).unwrap();
+    env.pay(g, s, 50 * UNIT).unwrap(); // G na minusie
+    env.pay(b, s, 280 * UNIT).unwrap(); // B korzysta z poręczenia
+    env.warp(DEFAULT_AFTER);
+    env.default_member(s, g, &[]).unwrap();
+    env.default_member(s, b, &[g]).unwrap();
+    assert_eq!(env.member(&g.key()).balance, 0);
+    assert_eq!(env.circle_state().unbacked_loss, 80 * UNIT);
+    env.assert_invariants(&[f[0].key(), f[1].key(), f[2].key(), f[3].key()]);
+}
+
+#[test]
+fn duplicated_guarantee_pair_charges_once() {
+    let (mut env, f) = Env::setup(3);
+    env.give(&f[2], &f[0], 100 * UNIT).unwrap();
+    env.pay(&f[0], &f[1], 280 * UNIT).unwrap();
+    env.warp(DEFAULT_AFTER);
+    env.default_member(&f[1], &f[0], &[&f[2], &f[2]]).unwrap();
+    assert_eq!(env.member(&f[2].key()).balance, -80 * UNIT as i64);
+    env.assert_invariants(&[f[0].key(), f[1].key(), f[2].key()]);
+}
+
+#[test]
+fn pay_to_defaulted_member_rejected() {
+    let (mut env, f) = Env::setup(3);
+    env.pay(&f[0], &f[1], 100 * UNIT).unwrap();
+    env.warp(DEFAULT_AFTER);
+    env.default_member(&f[1], &f[0], &[]).unwrap();
+    assert_err(env.pay(&f[2], &f[0], UNIT), 6003);
 }
 
 #[test]

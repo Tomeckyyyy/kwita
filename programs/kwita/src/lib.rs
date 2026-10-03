@@ -39,4 +39,8 @@ pub mod kwita {
     pub fn join(ctx: Context<Join>) -> Result<()> {
         crate::instructions::join::handle_join(ctx)
     }
+
+    pub fn pay(ctx: Context<Pay>, amount: u64, invoice_ref: String) -> Result<()> {
+        crate::instructions::pay::handle_pay(ctx, amount, invoice_ref)
+    }
 }

@@ -105,6 +105,10 @@ impl Env {
         let mut svm = LiteSVM::new();
         let bytes = include_bytes!(concat!(env!("CARGO_TARGET_TMPDIR"), "/../deploy/kwita.so"));
         svm.add_program(kwita::id(), bytes).unwrap();
+        // LiteSVM startuje od unix_timestamp = 0, a 0 w negative_since znaczy „nie na minusie”.
+        let mut clock: solana_clock::Clock = svm.get_sysvar();
+        clock.unix_timestamp = 1_790_000_000;
+        svm.set_sysvar(&clock);
         let payer = Keypair::new();
         svm.airdrop(&payer.pubkey(), 100_000_000_000).unwrap();
         let mint = CreateMint::new(&mut svm, &payer).decimals(6).send().unwrap();
@@ -166,6 +170,42 @@ impl Env {
             .to_account_metas(None),
         );
         let kp = f.kp.insecure_clone();
+        send(&mut self.svm, &[i], &kp, &[])
+    }
+
+    pub fn setup(n: usize) -> (Env, Vec<Firm>) {
+        let mut env = Env::new();
+        let firms: Vec<Firm> = (0..n).map(|_| env.firm()).collect();
+        for f in &firms {
+            env.join(f).unwrap();
+        }
+        (env, firms)
+    }
+
+    pub fn pay(&mut self, buyer: &Firm, seller: &Firm, amount: u64) -> Result<(), FailedTransactionMetadata> {
+        self.pay_ref(buyer, seller, amount, "FV/1/2026")
+    }
+
+    pub fn pay_ref(
+        &mut self,
+        buyer: &Firm,
+        seller: &Firm,
+        amount: u64,
+        invoice_ref: &str,
+    ) -> Result<(), FailedTransactionMetadata> {
+        let i = ix(
+            kwita::instruction::Pay { amount, invoice_ref: invoice_ref.to_string() }.data(),
+            kwita::accounts::Pay {
+                buyer: buyer.key(),
+                circle: self.circle,
+                buyer_member: member_pda(&self.circle, &buyer.key()),
+                seller_member: member_pda(&self.circle, &seller.key()),
+                pair: pair_pda(&self.circle, &seller.key(), &buyer.key()),
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        );
+        let kp = buyer.kp.insecure_clone();
         send(&mut self.svm, &[i], &kp, &[])
     }
 

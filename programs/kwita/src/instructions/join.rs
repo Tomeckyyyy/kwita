@@ -1,7 +1,13 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{prelude::*, AccountsClose};
 use anchor_spl::token::{self, Mint, Token, TokenAccount, TransferChecked};
 
-use crate::{constants::*, events::MemberJoined, fmt::tpln, state::*};
+use crate::{
+    constants::*,
+    error::KwitaError,
+    events::MemberJoined,
+    fmt::{short, tpln},
+    state::*,
+};
 
 #[derive(Accounts)]
 pub struct Join<'info> {
@@ -23,11 +29,38 @@ pub struct Join<'info> {
     pub owner_token: Account<'info, TokenAccount>,
     #[account(mut, address = circle.vault)]
     pub vault: Account<'info, TokenAccount>,
+    /// Zaproszenie dla tej firmy. Wymagane, chyba że dołącza założyciel kręgu (pierwszy członek).
+    /// Zużywane przy dołączeniu: konto zamknięte, opłata wraca do zapraszającego.
+    #[account(
+        mut,
+        seeds = [INVITE_SEED, circle.key().as_ref(), owner.key().as_ref()],
+        bump = invite.bump
+    )]
+    pub invite: Option<Account<'info, Invite>>,
+    /// CHECK: zapraszający z konta zaproszenia (odbiera zwrot opłaty); zgodność sprawdza handler.
+    #[account(mut)]
+    pub inviter: Option<UncheckedAccount<'info>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 
 pub fn handle_join(ctx: Context<Join>) -> Result<()> {
+    let owner_key = ctx.accounts.owner.key();
+    match (&ctx.accounts.invite, &ctx.accounts.inviter) {
+        (Some(invite), Some(inviter)) => {
+            require_keys_eq!(inviter.key(), invite.inviter, KwitaError::WrongInviter);
+            msg!("Kwita: zaproszenie od firmy {}. Zaproszenie zużyte.", short(&invite.inviter));
+            invite.close(inviter.to_account_info())?;
+        }
+        (Some(_), None) => return err!(KwitaError::WrongInviter),
+        (None, _) if owner_key == ctx.accounts.circle.creator => {
+            msg!("Kwita: założyciel kręgu dołącza bez zaproszenia.");
+        }
+        (None, _) => {
+            msg!("Kwita: brak zaproszenia do kręgu. Odmowa.");
+            return err!(KwitaError::NotInvited);
+        }
+    }
     let deposit = ctx.accounts.circle.deposit_amount;
     token::transfer_checked(
         CpiContext::new(

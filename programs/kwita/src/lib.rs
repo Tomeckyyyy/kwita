@@ -39,6 +39,14 @@ pub mod kwita {
         )
     }
 
+    pub fn invite(ctx: Context<InviteFirm>, invitee: Pubkey) -> Result<()> {
+        crate::instructions::invite::handle_invite(ctx, invitee)
+    }
+
+    pub fn revoke_invite(ctx: Context<RevokeInvite>, invitee: Pubkey) -> Result<()> {
+        crate::instructions::invite::handle_revoke_invite(ctx, invitee)
+    }
+
     pub fn join(ctx: Context<Join>) -> Result<()> {
         crate::instructions::join::handle_join(ctx)
     }

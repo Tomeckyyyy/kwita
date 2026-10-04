@@ -40,6 +40,11 @@ pub struct Env {
     pub mint: Pubkey,
     pub circle: Pubkey,
     pub vault: Pubkey,
+    /// Założyciel kręgu (twórca `create_circle`); zwraca go pierwsze wywołanie `firm()`.
+    pub creator: Pubkey,
+    founder: Option<Firm>,
+    /// Firmy, które dołączyły przez `join` (kandydaci na zapraszających).
+    joined: Vec<Keypair>,
 }
 
 pub fn pda(seeds: &[&[u8]]) -> Pubkey {
@@ -52,6 +57,10 @@ pub fn member_pda(circle: &Pubkey, owner: &Pubkey) -> Pubkey {
 
 pub fn pair_pda(circle: &Pubkey, seller: &Pubkey, buyer: &Pubkey) -> Pubkey {
     pda(&[kwita::PAIR_SEED, circle.as_ref(), seller.as_ref(), buyer.as_ref()])
+}
+
+pub fn invite_pda(circle: &Pubkey, invitee: &Pubkey) -> Pubkey {
+    pda(&[kwita::INVITE_SEED, circle.as_ref(), invitee.as_ref()])
 }
 
 pub fn guarantee_pda(circle: &Pubkey, guarantor: &Pubkey, beneficiary: &Pubkey) -> Pubkey {
@@ -101,6 +110,17 @@ pub fn ix(
     Instruction::new_with_bytes(kwita::id(), &data, accounts)
 }
 
+fn new_firm(svm: &mut LiteSVM, payer: &Keypair, mint: &Pubkey) -> Firm {
+    let kp = Keypair::new();
+    svm.airdrop(&kp.pubkey(), 10_000_000_000).unwrap();
+    let ata = CreateAssociatedTokenAccount::new(svm, payer, mint)
+        .owner(&kp.pubkey())
+        .send()
+        .unwrap();
+    MintTo::new(svm, payer, mint, &ata, 1_000 * UNIT).send().unwrap();
+    Firm { kp, ata }
+}
+
 impl Env {
     pub fn new() -> Self {
         Self::with_params(DEPOSIT, BPS, CAP, MAX_SALES, DEFAULT_AFTER).expect("create_circle")
@@ -134,7 +154,9 @@ impl Env {
         let payer = Keypair::new();
         svm.airdrop(&payer.pubkey(), 100_000_000_000).unwrap();
         let mint = CreateMint::new(&mut svm, &payer).decimals(6).send().unwrap();
-        let circle = pda(&[kwita::CIRCLE_SEED, payer.pubkey().as_ref(), &CIRCLE_ID.to_le_bytes()]);
+        let founder = new_firm(&mut svm, &payer, &mint);
+        let creator = founder.key();
+        let circle = pda(&[kwita::CIRCLE_SEED, creator.as_ref(), &CIRCLE_ID.to_le_bytes()]);
         let vault = pda(&[kwita::VAULT_SEED, circle.as_ref()]);
         let create = ix(
             kwita::instruction::CreateCircle {
@@ -148,7 +170,7 @@ impl Env {
             }
             .data(),
             kwita::accounts::CreateCircle {
-                creator: payer.pubkey(),
+                creator,
                 circle,
                 collateral_mint: mint,
                 vault,
@@ -157,31 +179,51 @@ impl Env {
             }
             .to_account_metas(None),
         );
-        let mut env = Env { svm, payer, mint, circle, vault };
-        let payer_kp = env.payer.insecure_clone();
-        send(&mut env.svm, &[create], &payer_kp, &[])?;
-        Ok(env)
+        let founder_kp = founder.kp.insecure_clone();
+        send(&mut svm, &[create], &founder_kp, &[])?;
+        Ok(Env { svm, payer, mint, circle, vault, creator, founder: Some(founder), joined: vec![] })
     }
 
-    /// Nowa firma: SOL na opłaty, konto tPLN i 1 000 tPLN.
+    /// Nowa firma: SOL na opłaty, konto tPLN i 1 000 tPLN. Pierwsza to założyciel kręgu.
     pub fn firm(&mut self) -> Firm {
-        let kp = Keypair::new();
-        self.svm.airdrop(&kp.pubkey(), 10_000_000_000).unwrap();
-        let ata = CreateAssociatedTokenAccount::new(&mut self.svm, &self.payer, &self.mint)
-            .owner(&kp.pubkey())
-            .send()
-            .unwrap();
-        MintTo::new(&mut self.svm, &self.payer, &self.mint, &ata, 1_000 * UNIT)
-            .send()
-            .unwrap();
-        Firm { kp, ata }
+        if let Some(f) = self.founder.take() {
+            return f;
+        }
+        new_firm(&mut self.svm, &self.payer, &self.mint)
     }
 
+    /// Dołączenie jak w aplikacji: jeśli firma nie jest założycielem i nie ma zaproszenia,
+    /// najpierw zaprasza ją pierwsza aktywna firma z kręgu.
     pub fn join(&mut self, f: &Firm) -> Result<(), FailedTransactionMetadata> {
         self.join_logs(f).map(|_| ())
     }
 
     pub fn join_logs(&mut self, f: &Firm) -> Result<Vec<String>, FailedTransactionMetadata> {
+        if f.key() != self.creator && self.invite_opt(&f.key()).is_none() {
+            let inviter = self
+                .joined
+                .iter()
+                .find(|k| {
+                    k.pubkey() != f.key()
+                        && self
+                            .member_opt(&k.pubkey())
+                            .is_some_and(|m| m.status == kwita::MemberStatus::Active)
+                })
+                .map(|k| k.insecure_clone());
+            if let Some(inviter) = inviter {
+                self.invite_kp(&inviter, &f.key())?;
+            }
+        }
+        self.join_only_logs(f)
+    }
+
+    /// Samo `join`: przekazuje zaproszenie, jeśli istnieje, bez zapraszania.
+    pub fn join_only(&mut self, f: &Firm) -> Result<(), FailedTransactionMetadata> {
+        self.join_only_logs(f).map(|_| ())
+    }
+
+    pub fn join_only_logs(&mut self, f: &Firm) -> Result<Vec<String>, FailedTransactionMetadata> {
+        let invite = self.invite_opt(&f.key());
         let i = ix(
             kwita::instruction::Join {}.data(),
             kwita::accounts::Join {
@@ -191,13 +233,70 @@ impl Env {
                 collateral_mint: self.mint,
                 owner_token: f.ata,
                 vault: self.vault,
+                invite: invite.as_ref().map(|_| invite_pda(&self.circle, &f.key())),
+                inviter: invite.as_ref().map(|i| i.inviter),
                 token_program: anchor_spl::token::ID,
                 system_program: system_program::ID,
             }
             .to_account_metas(None),
         );
         let kp = f.kp.insecure_clone();
-        send_logs(&mut self.svm, &[i], &kp, &[])
+        let res = send_logs(&mut self.svm, &[i], &kp, &[]);
+        if res.is_ok() {
+            self.joined.push(f.kp.insecure_clone());
+        }
+        res
+    }
+
+    pub fn invite(&mut self, inviter: &Firm, invitee: &Pubkey) -> Result<(), FailedTransactionMetadata> {
+        self.invite_logs(inviter, invitee).map(|_| ())
+    }
+
+    pub fn invite_logs(&mut self, inviter: &Firm, invitee: &Pubkey) -> Result<Vec<String>, FailedTransactionMetadata> {
+        let kp = inviter.kp.insecure_clone();
+        self.invite_kp(&kp, invitee)
+    }
+
+    fn invite_kp(&mut self, inviter: &Keypair, invitee: &Pubkey) -> Result<Vec<String>, FailedTransactionMetadata> {
+        let i = ix(
+            kwita::instruction::Invite { invitee: *invitee }.data(),
+            kwita::accounts::InviteFirm {
+                inviter: inviter.pubkey(),
+                circle: self.circle,
+                inviter_member: member_pda(&self.circle, &inviter.pubkey()),
+                invite: invite_pda(&self.circle, invitee),
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        );
+        send_logs(&mut self.svm, &[i], inviter, &[])
+    }
+
+    pub fn revoke_invite(&mut self, inviter: &Firm, invitee: &Pubkey) -> Result<(), FailedTransactionMetadata> {
+        let i = ix(
+            kwita::instruction::RevokeInvite { invitee: *invitee }.data(),
+            kwita::accounts::RevokeInvite {
+                inviter: inviter.key(),
+                circle: self.circle,
+                invite: invite_pda(&self.circle, invitee),
+            }
+            .to_account_metas(None),
+        );
+        let kp = inviter.kp.insecure_clone();
+        send(&mut self.svm, &[i], &kp, &[])
+    }
+
+    /// Zaproszenie dla firmy albo None (nie ma albo zużyte).
+    pub fn invite_opt(&self, invitee: &Pubkey) -> Option<kwita::Invite> {
+        let acc = self.svm.get_account(&invite_pda(&self.circle, invitee))?;
+        if acc.lamports == 0 || acc.data.is_empty() {
+            return None;
+        }
+        Some(kwita::Invite::try_deserialize(&mut acc.data.as_slice()).unwrap())
+    }
+
+    pub fn lamports(&self, key: &Pubkey) -> u64 {
+        self.svm.get_account(key).map(|a| a.lamports).unwrap_or(0)
     }
 
     pub fn setup(n: usize) -> (Env, Vec<Firm>) {

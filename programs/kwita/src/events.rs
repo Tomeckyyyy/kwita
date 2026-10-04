@@ -57,3 +57,17 @@ pub struct MemberDefaulted {
     pub from_guarantors: u64,
     pub unbacked: u64,
 }
+
+#[event]
+pub struct MemberInvited {
+    pub circle: Pubkey,
+    pub inviter: Pubkey,
+    pub invitee: Pubkey,
+}
+
+#[event]
+pub struct InviteRevoked {
+    pub circle: Pubkey,
+    pub inviter: Pubkey,
+    pub invitee: Pubkey,
+}

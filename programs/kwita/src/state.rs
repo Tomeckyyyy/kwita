@@ -80,6 +80,16 @@ pub struct Guarantee {
     pub bump: u8,
 }
 
+/// Zaproszenie do kręgu: wystawia je aktywna firma z kręgu, zużywa `join` zaproszonej firmy.
+#[account]
+#[derive(InitSpace)]
+pub struct Invite {
+    pub circle: Pubkey,
+    pub inviter: Pubkey,
+    pub invitee: Pubkey,
+    pub bump: u8,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

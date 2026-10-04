@@ -13,6 +13,12 @@ pub fn tpln(base_units: i128) -> String {
     }
 }
 
+/// Skrócony adres do logów: pierwsze i ostatnie 4 znaki (AbCd…WxYz).
+pub fn short(key: &anchor_lang::prelude::Pubkey) -> String {
+    let s = key.to_string();
+    format!("{}…{}", &s[..4], &s[s.len() - 4..])
+}
+
 #[cfg(test)]
 mod tests {
     use super::tpln;

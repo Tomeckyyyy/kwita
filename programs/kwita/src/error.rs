@@ -44,4 +44,12 @@ pub enum KwitaError {
     PositiveBalanceCap, // 6019
     #[msg("Firma ma poręczenia od innych firm: poproś poręczycieli o ich wycofanie")]
     HasReceivedGuarantees, // 6020
+    #[msg("Nie masz zaproszenia do tego kręgu")]
+    NotInvited, // 6021
+    #[msg("Nie można zaprosić samego siebie")]
+    CannotInviteSelf, // 6022
+    #[msg("Zapraszać może tylko aktywna firma z kręgu")]
+    InviterNotActive, // 6023
+    #[msg("Konto zapraszającego nie zgadza się z zaproszeniem")]
+    WrongInviter, // 6024
 }

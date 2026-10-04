@@ -19,6 +19,7 @@ pub const DEPOSIT: u64 = 200 * UNIT;
 pub const BPS: u16 = 5_000;
 pub const CAP: u64 = 300 * UNIT;
 pub const MAX_SALES: u64 = 1_000 * UNIT;
+pub const MAX_POSITIVE: u64 = 1_500 * UNIT;
 pub const DEFAULT_AFTER: i64 = 60;
 pub const CIRCLE_ID: u64 = 1;
 
@@ -63,13 +64,23 @@ pub fn send(
     payer: &Keypair,
     signers: &[&Keypair],
 ) -> Result<(), FailedTransactionMetadata> {
+    send_logs(svm, ixs, payer, signers).map(|_| ())
+}
+
+/// Jak `send`, ale zwraca logi programu (także przy błędzie, w `FailedTransactionMetadata.meta.logs`).
+pub fn send_logs(
+    svm: &mut LiteSVM,
+    ixs: &[Instruction],
+    payer: &Keypair,
+    signers: &[&Keypair],
+) -> Result<Vec<String>, FailedTransactionMetadata> {
     svm.expire_blockhash();
     let blockhash = svm.latest_blockhash();
     let msg = Message::new_with_blockhash(ixs, Some(&payer.pubkey()), &blockhash);
     let mut all: Vec<&Keypair> = vec![payer];
     all.extend_from_slice(signers);
     let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &all).unwrap();
-    svm.send_transaction(tx).map(|_| ())
+    svm.send_transaction(tx).map(|m| m.logs)
 }
 
 /// Sprawdza, że transakcja padła z błędem programu `code` (6000 + indeks KwitaError).
@@ -102,6 +113,17 @@ impl Env {
         max_sales: u64,
         default_after: i64,
     ) -> Result<Self, FailedTransactionMetadata> {
+        Self::with_params_full(deposit, bps, cap, max_sales, default_after, MAX_POSITIVE)
+    }
+
+    pub fn with_params_full(
+        deposit: u64,
+        bps: u16,
+        cap: u64,
+        max_sales: u64,
+        default_after: i64,
+        max_positive: u64,
+    ) -> Result<Self, FailedTransactionMetadata> {
         let mut svm = LiteSVM::new();
         let bytes = include_bytes!(concat!(env!("CARGO_TARGET_TMPDIR"), "/../deploy/kwita.so"));
         svm.add_program(kwita::id(), bytes).unwrap();
@@ -122,6 +144,7 @@ impl Env {
                 per_counterparty_cap: cap,
                 max_sales_credit: max_sales,
                 default_after_secs: default_after,
+                max_positive_balance: max_positive,
             }
             .data(),
             kwita::accounts::CreateCircle {
@@ -155,6 +178,10 @@ impl Env {
     }
 
     pub fn join(&mut self, f: &Firm) -> Result<(), FailedTransactionMetadata> {
+        self.join_logs(f).map(|_| ())
+    }
+
+    pub fn join_logs(&mut self, f: &Firm) -> Result<Vec<String>, FailedTransactionMetadata> {
         let i = ix(
             kwita::instruction::Join {}.data(),
             kwita::accounts::Join {
@@ -170,11 +197,14 @@ impl Env {
             .to_account_metas(None),
         );
         let kp = f.kp.insecure_clone();
-        send(&mut self.svm, &[i], &kp, &[])
+        send_logs(&mut self.svm, &[i], &kp, &[])
     }
 
     pub fn setup(n: usize) -> (Env, Vec<Firm>) {
-        let mut env = Env::new();
+        Self::setup_with(Env::new(), n)
+    }
+
+    pub fn setup_with(mut env: Env, n: usize) -> (Env, Vec<Firm>) {
         let firms: Vec<Firm> = (0..n).map(|_| env.firm()).collect();
         for f in &firms {
             env.join(f).unwrap();
@@ -193,6 +223,16 @@ impl Env {
         amount: u64,
         invoice_ref: &str,
     ) -> Result<(), FailedTransactionMetadata> {
+        self.pay_logs(buyer, seller, amount, invoice_ref).map(|_| ())
+    }
+
+    pub fn pay_logs(
+        &mut self,
+        buyer: &Firm,
+        seller: &Firm,
+        amount: u64,
+        invoice_ref: &str,
+    ) -> Result<Vec<String>, FailedTransactionMetadata> {
         let i = ix(
             kwita::instruction::Pay { amount, invoice_ref: invoice_ref.to_string() }.data(),
             kwita::accounts::Pay {
@@ -201,15 +241,20 @@ impl Env {
                 buyer_member: member_pda(&self.circle, &buyer.key()),
                 seller_member: member_pda(&self.circle, &seller.key()),
                 pair: pair_pda(&self.circle, &seller.key(), &buyer.key()),
+                reverse_pair: pair_pda(&self.circle, &buyer.key(), &seller.key()),
                 system_program: system_program::ID,
             }
             .to_account_metas(None),
         );
         let kp = buyer.kp.insecure_clone();
-        send(&mut self.svm, &[i], &kp, &[])
+        send_logs(&mut self.svm, &[i], &kp, &[])
     }
 
     pub fn give(&mut self, g: &Firm, b: &Firm, amount: u64) -> Result<(), FailedTransactionMetadata> {
+        self.give_logs(g, b, amount).map(|_| ())
+    }
+
+    pub fn give_logs(&mut self, g: &Firm, b: &Firm, amount: u64) -> Result<Vec<String>, FailedTransactionMetadata> {
         let i = ix(
             kwita::instruction::GiveGuarantee { amount }.data(),
             kwita::accounts::GiveGuarantee {
@@ -223,7 +268,7 @@ impl Env {
             .to_account_metas(None),
         );
         let kp = g.kp.insecure_clone();
-        send(&mut self.svm, &[i], &kp, &[])
+        send_logs(&mut self.svm, &[i], &kp, &[])
     }
 
     pub fn withdraw(&mut self, g: &Firm, b: &Firm, amount: u64) -> Result<(), FailedTransactionMetadata> {
@@ -274,6 +319,15 @@ impl Env {
         target: &Firm,
         guarantors: &[&Firm],
     ) -> Result<(), FailedTransactionMetadata> {
+        self.default_logs(caller, target, guarantors).map(|_| ())
+    }
+
+    pub fn default_logs(
+        &mut self,
+        caller: &Firm,
+        target: &Firm,
+        guarantors: &[&Firm],
+    ) -> Result<Vec<String>, FailedTransactionMetadata> {
         use anchor_lang::solana_program::instruction::AccountMeta;
         let mut metas = kwita::accounts::DeclareDefault {
             caller: caller.key(),
@@ -287,12 +341,21 @@ impl Env {
         }
         let i = ix(kwita::instruction::DeclareDefault {}.data(), metas);
         let kp = caller.kp.insecure_clone();
-        send(&mut self.svm, &[i], &kp, &[])
+        send_logs(&mut self.svm, &[i], &kp, &[])
     }
 
     pub fn circle_state(&self) -> kwita::Circle {
         let acc = self.svm.get_account(&self.circle).unwrap();
         kwita::Circle::try_deserialize(&mut acc.data.as_slice()).unwrap()
+    }
+
+    /// Konto firmy albo None, jeśli zostało zamknięte (wyjście z kręgu).
+    pub fn member_opt(&self, owner: &Pubkey) -> Option<kwita::Member> {
+        let acc = self.svm.get_account(&member_pda(&self.circle, owner))?;
+        if acc.lamports == 0 || acc.data.is_empty() {
+            return None;
+        }
+        Some(kwita::Member::try_deserialize(&mut acc.data.as_slice()).unwrap())
     }
 
     pub fn member(&self, owner: &Pubkey) -> kwita::Member {
@@ -322,7 +385,7 @@ impl Env {
     /// Niezmienniki: suma sald + Rezerwa = 0; vault = kaucje + reserve_usdc.
     pub fn assert_invariants(&self, owners: &[Pubkey]) {
         let c = self.circle_state();
-        let members: Vec<kwita::Member> = owners.iter().map(|o| self.member(o)).collect();
+        let members: Vec<kwita::Member> = owners.iter().filter_map(|o| self.member_opt(o)).collect();
         let sum: i128 = members.iter().map(|m| m.balance as i128).sum::<i128>()
             + c.reserve_balance as i128;
         assert_eq!(sum, 0, "suma sald + Rezerwa != 0");

@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{constants::*, error::KwitaError, events::GuaranteeChanged, state::*};
+use crate::{constants::*, error::KwitaError, events::GuaranteeChanged, fmt::tpln, state::*};
 
 #[derive(Accounts)]
 pub struct GiveGuarantee<'info> {
@@ -53,6 +53,12 @@ pub fn handle_give_guarantee(ctx: Context<GiveGuarantee>, amount: u64) -> Result
     gu.beneficiary = b.owner;
     gu.amount = gu.amount.checked_add(amount).ok_or(KwitaError::MathOverflow)?;
     gu.bump = ctx.bumps.guarantee;
+    msg!(
+        "Kwita: poręczenie {} tPLN. Limit poręczyciela: {} tPLN, limit firmy z poręczeniem: {} tPLN.",
+        tpln(amount as i128),
+        tpln(g.limit(circle)),
+        tpln(b.limit(circle))
+    );
     emit!(GuaranteeChanged {
         circle: circle.key(),
         guarantor: g.owner,
@@ -95,6 +101,11 @@ pub fn handle_withdraw_guarantee(ctx: Context<WithdrawGuarantee>, amount: u64) -
     if b.status == MemberStatus::Active {
         require!(b.within_limit(circle), KwitaError::GuaranteeInUse);
     }
+    msg!(
+        "Kwita: wycofanie poręczenia {} tPLN. Limit firmy po wycofaniu: {} tPLN.",
+        tpln(amount as i128),
+        tpln(b.limit(circle))
+    );
     emit!(GuaranteeChanged {
         circle: circle.key(),
         guarantor: g.owner,

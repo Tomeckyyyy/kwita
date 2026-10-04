@@ -65,7 +65,7 @@ fn default_beyond_deposit_and_guarantee_records_unbacked_loss() {
     // drugi przypadek: limit 200 kaucji + 20 ze sprzedaży + 30 poręczenia; dług 250 -> 20 niepokryte
     let (mut env, f) = Env::setup(3);
     env.give(&f[2], &f[0], 30 * UNIT).unwrap();
-    env.pay(&f[1], &f[0], 40 * UNIT).unwrap();
+    env.pay(&f[2], &f[0], 40 * UNIT).unwrap(); // sprzedaż do innej firmy niż ta, u której potem kupuje
     env.pay(&f[0], &f[1], 290 * UNIT).unwrap();
     env.warp(DEFAULT_AFTER);
     env.default_member(&f[1], &f[0], &[&f[2]]).unwrap();
@@ -137,4 +137,17 @@ fn second_default_rejected() {
     env.default_member(&f[1], &f[0], &[]).unwrap();
     assert_err(env.default_member(&f[1], &f[0], &[]), 6003);
     assert_err(env.leave(&f[0], false), 6003);
+}
+
+#[test]
+fn default_logs_explain_who_pays() {
+    let (mut env, f) = Env::setup(3);
+    env.give(&f[2], &f[0], 100 * UNIT).unwrap();
+    env.pay(&f[0], &f[1], 280 * UNIT).unwrap();
+    env.warp(DEFAULT_AFTER);
+    let logs = env.default_logs(&f[1], &f[0], &[&f[2]]).unwrap().join("\n");
+    assert!(
+        logs.contains("Kwita: niewypłacalność. Dług 280 tPLN: z kaucji 200, od poręczycieli 80, niepokryte 0."),
+        "{logs}"
+    );
 }

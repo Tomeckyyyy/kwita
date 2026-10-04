@@ -40,4 +40,8 @@ pub enum KwitaError {
     MathOverflow, // 6017
     #[msg("Konto należy do innego kręgu")]
     WrongCircle, // 6018
+    #[msg("Saldo sprzedawcy przekroczyłoby pułap salda dodatniego")]
+    PositiveBalanceCap, // 6019
+    #[msg("Firma ma poręczenia od innych firm: poproś poręczycieli o ich wycofanie")]
+    HasReceivedGuarantees, // 6020
 }

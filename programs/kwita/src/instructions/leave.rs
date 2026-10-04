@@ -2,19 +2,21 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
 use crate::{
-    constants::*, error::KwitaError, events::MemberLeft, instructions::vault::transfer_from_vault,
-    state::*,
+    constants::*, error::KwitaError, events::MemberLeft, fmt::tpln,
+    instructions::vault::transfer_from_vault, state::*,
 };
 
 #[derive(Accounts)]
 pub struct Leave<'info> {
+    #[account(mut)]
     pub owner: Signer<'info>,
     #[account(mut)]
     pub circle: Account<'info, Circle>,
     #[account(
         mut,
         seeds = [MEMBER_SEED, circle.key().as_ref(), owner.key().as_ref()],
-        bump = member.bump
+        bump = member.bump,
+        close = owner
     )]
     pub member: Account<'info, Member>,
     #[account(address = circle.collateral_mint)]
@@ -31,6 +33,7 @@ pub fn handle_leave(ctx: Context<Leave>, forfeit_positive: bool) -> Result<()> {
     let m = &mut ctx.accounts.member;
     require!(m.status == MemberStatus::Active, KwitaError::NotActive);
     require!(m.guarantees_given == 0, KwitaError::HasGivenGuarantees);
+    require!(m.guarantees_received == 0, KwitaError::HasReceivedGuarantees);
 
     let mut covered_debt = 0u64;
     let mut forfeited = 0u64;
@@ -63,6 +66,18 @@ pub fn handle_leave(ctx: Context<Leave>, forfeit_positive: bool) -> Result<()> {
             refunded,
         )?;
     }
+    msg!(
+        "Kwita: wyjście z kręgu. Dług pokryty z kaucji: {} tPLN, oddane Rezerwie: {}, zwrot kaucji: {}.",
+        tpln(covered_debt as i128),
+        tpln(forfeited as i128),
+        tpln(refunded as i128)
+    );
+    msg!(
+        "Kwita: wyjście z kręgu. Dług pokryty z kaucji: {} tPLN, oddane Rezerwie: {}, zwrot kaucji: {}.",
+        tpln(covered_debt as i128),
+        tpln(forfeited as i128),
+        tpln(refunded as i128)
+    );
     emit!(MemberLeft {
         circle: circle_key,
         owner,

@@ -10,6 +10,7 @@ fn create_circle_stores_params() {
     assert_eq!(c.per_counterparty_cap, CAP);
     assert_eq!(c.max_sales_credit, MAX_SALES);
     assert_eq!(c.default_after_secs, DEFAULT_AFTER);
+    assert_eq!(c.max_positive_balance, MAX_POSITIVE);
     assert_eq!(c.vault, env.vault);
     assert_eq!(c.reserve_balance, 0);
     assert_eq!(env.tokens(&env.vault), 0);
@@ -44,4 +45,12 @@ fn join_twice_fails() {
     let a = env.firm();
     env.join(&a).unwrap();
     assert!(env.join(&a).is_err());
+}
+
+#[test]
+fn join_logs_explain_limit() {
+    let mut env = Env::new();
+    let a = env.firm();
+    let logs = env.join_logs(&a).unwrap().join("\n");
+    assert!(logs.contains("Kwita: dołączenie do kręgu. Kaucja 200 tPLN, limit 200 tPLN."), "{logs}");
 }

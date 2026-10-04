@@ -1,6 +1,7 @@
 pub mod constants;
 pub mod error;
 pub mod events;
+pub mod fmt;
 pub mod instructions;
 pub mod state;
 
@@ -24,6 +25,7 @@ pub mod kwita {
         per_counterparty_cap: u64,
         max_sales_credit: u64,
         default_after_secs: i64,
+        max_positive_balance: u64,
     ) -> Result<()> {
         crate::instructions::create_circle::handle_create_circle(
             ctx,
@@ -33,6 +35,7 @@ pub mod kwita {
             per_counterparty_cap,
             max_sales_credit,
             default_after_secs,
+            max_positive_balance,
         )
     }
 

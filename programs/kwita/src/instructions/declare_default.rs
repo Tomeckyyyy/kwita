@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{constants::*, error::KwitaError, events::MemberDefaulted, state::*};
+use crate::{constants::*, error::KwitaError, events::MemberDefaulted, fmt::tpln, state::*};
 
 #[derive(Accounts)]
 pub struct DeclareDefault<'info> {
@@ -85,6 +85,20 @@ pub fn handle_declare_default<'info>(ctx: Context<'info, DeclareDefault<'info>>)
     m.negative_since = 0;
     m.status = MemberStatus::Defaulted;
 
+    msg!(
+        "Kwita: niewypłacalność. Dług {} tPLN: z kaucji {}, od poręczycieli {}, niepokryte {}.",
+        tpln(debt as i128),
+        tpln(from_deposit as i128),
+        tpln(from_guarantors as i128),
+        tpln(loss as i128)
+    );
+    msg!(
+        "Kwita: niewypłacalność. Dług {} tPLN: z kaucji {}, od poręczycieli {}, niepokryte {}.",
+        tpln(debt as i128),
+        tpln(from_deposit as i128),
+        tpln(from_guarantors as i128),
+        tpln(loss as i128)
+    );
     emit!(MemberDefaulted {
         circle: circle.key(),
         owner: m.owner,

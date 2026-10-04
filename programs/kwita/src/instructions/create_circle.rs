@@ -38,6 +38,7 @@ pub fn handle_create_circle(
     per_counterparty_cap: u64,
     max_sales_credit: u64,
     default_after_secs: i64,
+    max_positive_balance: u64,
 ) -> Result<()> {
     require!(
         deposit_amount > 0 && sales_limit_bps <= 10_000 && default_after_secs > 0,
@@ -53,6 +54,7 @@ pub fn handle_create_circle(
     circle.per_counterparty_cap = per_counterparty_cap;
     circle.max_sales_credit = max_sales_credit;
     circle.default_after_secs = default_after_secs;
+    circle.max_positive_balance = max_positive_balance;
     circle.reserve_balance = 0;
     circle.reserve_usdc = 0;
     circle.unbacked_loss = 0;

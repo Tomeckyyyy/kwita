@@ -14,6 +14,8 @@ pub struct Circle {
     pub per_counterparty_cap: u64,
     pub max_sales_credit: u64,
     pub default_after_secs: i64,
+    /// Najwyższe dopuszczalne saldo dodatnie firmy (0 = bez pułapu): jednostki mają krążyć.
+    pub max_positive_balance: u64,
     pub reserve_balance: i64,
     pub reserve_usdc: u64,
     pub unbacked_loss: u64,
@@ -58,9 +60,13 @@ impl Member {
     }
 }
 
+/// Obroty sprzedawcy z jednym kupującym (konto na kierunek sprzedawca -> kupujący).
 #[account]
 #[derive(InitSpace)]
 pub struct Pair {
+    /// Łączna sprzedaż sprzedawcy do tego kupującego.
+    pub volume: u64,
+    /// Ile z tej sprzedaży liczy się teraz do limitu sprzedawcy: min(pułap, sprzedaż netto).
     pub counted: u64,
     pub bump: u8,
 }
@@ -89,6 +95,7 @@ mod tests {
             per_counterparty_cap: 300,
             max_sales_credit: 1_000,
             default_after_secs: 60,
+            max_positive_balance: 0,
             reserve_balance: 0,
             reserve_usdc: 0,
             unbacked_loss: 0,

@@ -50,3 +50,13 @@ fn withdraw_more_than_given_rejected() {
     env.give(&f[1], &f[0], 10 * UNIT).unwrap();
     assert_err(env.withdraw(&f[1], &f[0], 11 * UNIT), 6007);
 }
+
+#[test]
+fn guarantee_logs_explain_limits() {
+    let (mut env, f) = Env::setup(2);
+    let logs = env.give_logs(&f[1], &f[0], 100 * UNIT).unwrap().join("\n");
+    assert!(
+        logs.contains("Kwita: poręczenie 100 tPLN. Limit poręczyciela: 100 tPLN, limit firmy z poręczeniem: 300 tPLN."),
+        "{logs}"
+    );
+}

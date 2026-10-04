@@ -2,8 +2,8 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
 use crate::{
-    constants::*, error::KwitaError, events::Redeemed, instructions::vault::transfer_from_vault,
-    state::*,
+    constants::*, error::KwitaError, events::Redeemed, fmt::tpln,
+    instructions::vault::transfer_from_vault, state::*,
 };
 
 #[derive(Accounts)]
@@ -38,6 +38,11 @@ pub fn handle_redeem(ctx: Context<Redeem>, amount: u64) -> Result<()> {
     circle.reserve_balance += amount_i;
     circle.reserve_usdc -= amount;
     let (circle_key, owner) = (circle.key(), m.owner);
+    msg!(
+        "Kwita: wymiana {} jednostek na tPLN z Rezerwy. W Rezerwie zostaje {} tPLN.",
+        tpln(amount as i128),
+        tpln(circle.reserve_usdc as i128)
+    );
 
     transfer_from_vault(
         &ctx.accounts.circle,

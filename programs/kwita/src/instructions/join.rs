@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, TransferChecked};
 
-use crate::{constants::*, events::MemberJoined, state::*};
+use crate::{constants::*, events::MemberJoined, fmt::tpln, state::*};
 
 #[derive(Accounts)]
 pub struct Join<'info> {
@@ -55,6 +55,11 @@ pub fn handle_join(ctx: Context<Join>) -> Result<()> {
     m.status = MemberStatus::Active;
     m.bump = ctx.bumps.member;
     let owner = m.owner;
+    msg!(
+        "Kwita: dołączenie do kręgu. Kaucja {} tPLN, limit {} tPLN.",
+        tpln(deposit as i128),
+        tpln(m.limit(&ctx.accounts.circle))
+    );
     ctx.accounts.circle.member_count += 1;
     emit!(MemberJoined {
         circle: circle_key,

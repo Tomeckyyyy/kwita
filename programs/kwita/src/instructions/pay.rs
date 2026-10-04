@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{constants::*, error::KwitaError, events::PaymentMade, state::*};
+use crate::{constants::*, error::KwitaError, events::PaymentMade, fmt::tpln, state::*};
 
 #[derive(Accounts)]
 pub struct Pay<'info> {
@@ -27,6 +27,15 @@ pub struct Pay<'info> {
         bump
     )]
     pub pair: Account<'info, Pair>,
+    /// Kierunek odwrotny (kupujący jako sprzedawca dla tej samej firmy): do sprzedaży netto.
+    #[account(
+        init_if_needed,
+        payer = buyer,
+        space = 8 + Pair::INIT_SPACE,
+        seeds = [PAIR_SEED, circle.key().as_ref(), buyer.key().as_ref(), seller_member.owner.as_ref()],
+        bump
+    )]
+    pub reverse_pair: Account<'info, Pair>,
     pub system_program: Program<'info, System>,
 }
 
@@ -48,9 +57,50 @@ pub fn handle_pay(ctx: Context<Pay>, amount: u64, invoice_ref: String) -> Result
         .balance
         .checked_sub(amount_i)
         .ok_or(KwitaError::MathOverflow)?;
-    require!(
-        new_buyer as i128 >= -buyer.limit(circle),
-        KwitaError::LimitExceeded
+
+    // Sprzedaż netto między tą parą firm: do limitu liczy się tylko nadwyżka sprzedaży
+    // nad zakupami od tej samej firmy, z pułapem na kontrahenta. Wymiana w kółko daje zero.
+    let pair = &mut ctx.accounts.pair;
+    let reverse = &mut ctx.accounts.reverse_pair;
+    pair.bump = ctx.bumps.pair;
+    reverse.bump = ctx.bumps.reverse_pair;
+    pair.volume = pair.volume.checked_add(amount).ok_or(KwitaError::MathOverflow)?;
+    let net = pair.volume as i128 - reverse.volume as i128;
+    let cap = circle.per_counterparty_cap as i128;
+    let seller_counted = net.clamp(0, cap) as u64;
+    let buyer_counted = (-net).clamp(0, cap) as u64;
+    seller.counted_sales = seller.counted_sales - pair.counted + seller_counted;
+    buyer.counted_sales = buyer.counted_sales - reverse.counted + buyer_counted;
+    pair.counted = seller_counted;
+    reverse.counted = buyer_counted;
+
+    // Limit kupującego liczony już po zmianie jego kredytu ze sprzedaży.
+    let limit = buyer.limit(circle);
+    if (new_buyer as i128) < -limit {
+        msg!(
+            "Kwita: saldo po zakupie {} tPLN przekracza limit {} tPLN. Odmowa.",
+            tpln(new_buyer as i128),
+            tpln(limit)
+        );
+        return err!(KwitaError::LimitExceeded);
+    }
+    let new_seller = seller
+        .balance
+        .checked_add(amount_i)
+        .ok_or(KwitaError::MathOverflow)?;
+    let max_pos = circle.max_positive_balance as i128;
+    if max_pos > 0 && new_seller as i128 > max_pos {
+        msg!(
+            "Kwita: saldo sprzedawcy po płatności {} tPLN przekroczy pułap {} tPLN. Odmowa.",
+            tpln(new_seller as i128),
+            tpln(max_pos)
+        );
+        return err!(KwitaError::PositiveBalanceCap);
+    }
+    msg!(
+        "Kwita: limit {} tPLN, saldo po zakupie {} tPLN. Płatność przyjęta.",
+        tpln(limit),
+        tpln(new_buyer as i128)
     );
 
     let now = Clock::get()?.unix_timestamp;
@@ -58,25 +108,11 @@ pub fn handle_pay(ctx: Context<Pay>, amount: u64, invoice_ref: String) -> Result
         buyer.negative_since = now;
     }
     buyer.balance = new_buyer;
-    seller.balance = seller
-        .balance
-        .checked_add(amount_i)
-        .ok_or(KwitaError::MathOverflow)?;
+    seller.balance = new_seller;
     if seller.balance >= 0 {
         seller.negative_since = 0;
     }
-
-    let pair = &mut ctx.accounts.pair;
-    pair.bump = ctx.bumps.pair;
-    let counted = circle
-        .per_counterparty_cap
-        .saturating_sub(pair.counted)
-        .min(amount);
-    pair.counted += counted;
-    seller.counted_sales = seller
-        .counted_sales
-        .checked_add(counted)
-        .ok_or(KwitaError::MathOverflow)?;
+    let counted = seller_counted;
 
     emit!(PaymentMade {
         circle: circle.key(),

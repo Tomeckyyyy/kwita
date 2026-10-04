@@ -8,10 +8,10 @@ Kwoty: jednostki bazowe tokena kaucji (tPLN, 6 miejsc po przecinku; 1 tPLN = 1 0
 
 | Konto | Seedy | Najważniejsze pola |
 |---|---|---|
-| `Circle` | `"circle"`, creator, `circle_id` (u64 LE) | `collateralMint`, `vault`, `depositAmount`, `salesLimitBps`, `perCounterpartyCap`, `maxSalesCredit`, `defaultAfterSecs`, `reserveBalance` (i64), `reserveUsdc`, `unbackedLoss`, `memberCount` |
+| `Circle` | `"circle"`, creator, `circle_id` (u64 LE) | `collateralMint`, `vault`, `depositAmount`, `salesLimitBps`, `perCounterpartyCap`, `maxSalesCredit`, `defaultAfterSecs`, `maxPositiveBalance` (0 = bez pułapu), `reserveBalance` (i64), `reserveUsdc`, `unbackedLoss`, `memberCount` |
 | vault (SPL token account) | `"vault"`, circle | authority = `Circle` |
 | `Member` | `"member"`, circle, owner | `owner`, `balance` (i64), `deposit`, `countedSales`, `guaranteesGiven`, `guaranteesReceived`, `negativeSince` (0 = nie na minusie), `status` (`{active:{}}` / `{exited:{}}` / `{defaulted:{}}`) |
-| `Pair` | `"pair"`, circle, seller (owner), buyer (owner) | `counted` |
+| `Pair` | `"pair"`, circle, seller (owner), buyer (owner) | `volume` (sprzedaż sprzedawca→kupujący), `counted` (ile liczy się do limitu: min(pułap, sprzedaż netto)) |
 | `Guarantee` | `"guarantee"`, circle, guarantor (owner), beneficiary (owner) | `guarantor`, `beneficiary`, `amount` |
 
 Filtry `getProgramAccounts`: `Member.circle` jest na offsecie 8, `Guarantee.beneficiary` na offsecie 40.
@@ -24,13 +24,13 @@ Konta w kolejności z IDL; „S” = podpisuje, „W” = zapisywalne.
 
 | Instrukcja | Argumenty | Konta |
 |---|---|---|
-| `createCircle` | `circleId: u64, depositAmount: u64, salesLimitBps: u16, perCounterpartyCap: u64, maxSalesCredit: u64, defaultAfterSecs: i64` | creator (S,W), circle (W), collateralMint, vault (W), tokenProgram, systemProgram |
+| `createCircle` | `circleId: u64, depositAmount: u64, salesLimitBps: u16, perCounterpartyCap: u64, maxSalesCredit: u64, defaultAfterSecs: i64, maxPositiveBalance: u64` | creator (S,W), circle (W), collateralMint, vault (W), tokenProgram, systemProgram |
 | `join` | — | owner (S,W), circle (W), member (W), collateralMint, ownerToken (W, ATA ownera), vault (W), tokenProgram, systemProgram |
-| `pay` | `amount: u64, invoiceRef: string (≤ 64 B)` | buyer (S,W), circle, buyerMember (W), sellerMember (W), pair (W), systemProgram |
+| `pay` | `amount: u64, invoiceRef: string (≤ 64 B)` | buyer (S,W), circle, buyerMember (W), sellerMember (W), pair (W, sprzedawca→kupujący), reversePair (W, kupujący→sprzedawca), systemProgram |
 | `giveGuarantee` | `amount: u64` | guarantor (S,W), circle, guarantorMember (W), beneficiaryMember (W), guarantee (W), systemProgram |
 | `withdrawGuarantee` | `amount: u64` | guarantor (S), circle, guarantorMember (W), beneficiaryMember (W), guarantee (W) |
 | `redeem` | `amount: u64` | owner (S), circle (W), member (W), collateralMint, ownerToken (W), vault (W), tokenProgram |
-| `leave` | `forfeitPositive: bool` | jak `redeem` |
+| `leave` | `forfeitPositive: bool` | jak `redeem`, ale owner (S,W): konto `Member` jest zamykane, opłata za nie wraca do firmy |
 | `declareDefault` | — | caller (S), circle (W), member (W, firma na minusie); `remainingAccounts`: pary `[guarantee (W), member poręczyciela (W)]` dla każdego poręczenia za tę firmę |
 
 ## Błędy (kod = 6000 + indeks)
@@ -56,6 +56,12 @@ Konta w kolejności z IDL; „S” = podpisuje, „W” = zapisywalne.
 | 6016 | InvalidGuaranteeAccount | zła para w `remainingAccounts` |
 | 6017 | MathOverflow | przepełnienie |
 | 6018 | WrongCircle | konto z innego kręgu |
+| 6019 | PositiveBalanceCap | saldo sprzedawcy przekroczyłoby `maxPositiveBalance` |
+| 6020 | HasReceivedGuarantees | `leave`, gdy inne firmy poręczają za tę firmę |
+
+## Logi decyzji
+
+Każda instrukcja zapisuje w logach transakcji zdanie po polsku zaczynające się od `Kwita:` (widać je w Explorerze), np. `Kwita: limit 200 tPLN, saldo po zakupie -150 tPLN. Płatność przyjęta.` albo `Kwita: saldo po zakupie -250 tPLN przekracza limit 200 tPLN. Odmowa.` Front wysyła transakcje bez symulacji (`skipPreflight`), więc odrzucenia też są zapisane w sieci. `decisionFromLogs()` w `app/src/lib/kwita.ts` wyciąga to zdanie.
 
 ## Zdarzenia
 

@@ -24,13 +24,14 @@ Explorer pokazuje transakcje z localnetu przez „Custom RPC URL” (`http://127
 
 ## Na devnecie
 
-- Program: [`GB8MgJJggQM7uiHwWy9nuL5AZnGbFraHVharujHKXAgk`](https://explorer.solana.com/address/GB8MgJJggQM7uiHwWy9nuL5AZnGbFraHVharujHKXAgk?cluster=devnet), pierwszy deploy: [`4DJN1x7q…`](https://explorer.solana.com/tx/4DJN1x7qGccqxQN4WAs327YwwWaZUYWfRGLpi3YJ73Mf72MuyVJuZ2CFzGTYLLiCXRpKBWdgttzcrs4mWU2DgJgP?cluster=devnet), upgrade po przeglądzie kodu: 4.10.2026 (`make upgrade-devnet`).
-- Przebieg scenariusza demo (`npm run smoke` na devnecie, 4.10.2026):
-  - zakup ponad limit przechodzi dopiero po poręczeniu: [zakup](https://explorer.solana.com/tx/xk9YFgogyHdL7RLxa8kBCg1Ki2XYtNPxBkQi5wqeCBm392Qj8EpqCom2PK4gDVoVvGK4RnQJJPNTG6j69ReT8hX?cluster=devnet), [poręczenie](https://explorer.solana.com/tx/5ZdbuKVrAoLdFgV4oWaK7Y74Zwxbra2r6Kpk1KJ78bnSeWHiwb1mDVMwSMfe8VnvoZNJT5cRmn3P1UasCCspUBgU?cluster=devnet);
-  - wyjście z kręgu z długiem pokrytym kaucją: [leave](https://explorer.solana.com/tx/3NrbCS14XaCJNnySjZYnTei4pMsGH7NBrcZL9WK9YrYY1DAP5K2E7m2ncBQk9SMGtEBTWDfUfUNtsC3YQCqq9Xru?cluster=devnet);
-  - wymiana jednostek na tPLN z Rezerwy: [redeem](https://explorer.solana.com/tx/jFTSGR3Rs8cpU9wNSq61eHogSZWU2PeBrA55m45G89JYyHuvhU7zDaUbNXEFCUtUWfcxVmHPfUdVKjbcaDqpQvw?cluster=devnet);
-  - niewypłacalność ogłoszona przez inną firmę, dług przechodzi na poręczyciela: [declare_default](https://explorer.solana.com/tx/hR7d2yht9iL3atUeKx9Xvp3cT3bkV8rJywZmJcuKYYRvibmzT4roTamhDzZjbNu2XnwvFtoPJRX3NmrrpLWeKSe?cluster=devnet).
-- Demo z frontu na devnecie: `PRESENTER=<adres Phantoma> make seed-devnet`, potem `make app`. W Phantomie: Ustawienia → Developer Settings → Testnet Mode, sieć Solana Devnet.
+- Program: [`GB8MgJJggQM7uiHwWy9nuL5AZnGbFraHVharujHKXAgk`](https://explorer.solana.com/address/GB8MgJJggQM7uiHwWy9nuL5AZnGbFraHVharujHKXAgk?cluster=devnet), pierwszy deploy: [`4DJN1x7q…`](https://explorer.solana.com/tx/4DJN1x7qGccqxQN4WAs327YwwWaZUYWfRGLpi3YJ73Mf72MuyVJuZ2CFzGTYLLiCXRpKBWdgttzcrs4mWU2DgJgP?cluster=devnet), upgrade z zaproszeniami: [`YLmMsYmg…`](https://explorer.solana.com/tx/YLmMsYmgo6F1PZAGrno5gJBHeCpnez5Jg9ehNh2JWm3icXL4M45TCrKW325wnagKRTjsp25MyqKbZSnMfNwMmy6?cluster=devnet) (4.10.2026, `make upgrade-devnet`).
+- Przebieg scenariusza demo (`npm run smoke` na devnecie, 4.10.2026, po upgradzie z zaproszeniami):
+  - bez zaproszenia program odrzuca dołączenie, firma z kręgu zaprasza: [zaproszenie](https://explorer.solana.com/tx/51GV7aBBtKahYGa3uWPpDAbDMuxDauYKY8o75oxdcscuQnzNVPR4Bcba3vYLe7q9XeeLajyRDmhiHRAYnJVsMGVH?cluster=devnet), [dołączenie z zaproszeniem](https://explorer.solana.com/tx/2NjjJPrJy5UWGk5v6A7bKXotRoo8z3ZW6Kd54VGrAmUej5zAhk42WAgrwhJro57H3NZxjftLwofgZhrVR8YAvRMa?cluster=devnet);
+  - zakup ponad limit przechodzi dopiero po poręczeniu: [poręczenie](https://explorer.solana.com/tx/4mfFkotPRj8BMoV4VCfzhrTz41mbt6cJyY6DMVvQizKugMTGZ1XAYwT14c9C5vH7QZyYfudJdewHXwQb1nbW49zv?cluster=devnet), [zakup](https://explorer.solana.com/tx/21PgCUFuz4URa9uXS9r3SEYtDyZXm8p6wGsboARyg78vQx9BsbVkx4cGw9w28gm9NrDKxfaa3vr23TuV3S21sBTC?cluster=devnet);
+  - wyjście z kręgu z długiem pokrytym kaucją: [leave](https://explorer.solana.com/tx/2FPrq8d8viKtZmLdsdrsf1BL5qeQQyYKjx5CFygdyRkbKj8iYJGuRANbGPVs3M28YT7F969xmWgmPBANTaC89NnS?cluster=devnet);
+  - wymiana jednostek na tPLN z Rezerwy: [redeem](https://explorer.solana.com/tx/29cyGH227ZQxjxn4ivyqjxk1xcETdNYY9s5XvuaW7ibDaxSrN6aRSVcJVqqRTLMSAJB5oujYfu5swSQZwyZQDjyR?cluster=devnet);
+  - niewypłacalność ogłoszona przez inną firmę, dług przechodzi na poręczyciela: [declare_default](https://explorer.solana.com/tx/2yWdasAEXuUetmiBpXBwdRT6ogiNvuquPjm47S3wffQXPxTQ3n9rFcTjkTDVc8qqxpUUsuB9wHZ5G5qs9LPmQxo1?cluster=devnet).
+- Demo z frontu na devnecie: `PRESENTER=<adres Phantoma> DEVNET_RPC=<URL RPC> make seed-devnet`, potem `make app`. Publiczny `api.devnet.solana.com` szybko zwraca 429 (front odpytuje go co 4 s), więc do demo używamy darmowego RPC (np. Helius); klucz trafia tylko do `app/.env.local`, które nie jest w repo. W Phantomie: Ustawienia → Developer Settings → Testnet Mode, sieć Solana Devnet.
 
 ---
 

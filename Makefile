@@ -5,6 +5,7 @@ PROGRAM     := kwita
 KEYPAIR_SRC := keys/$(PROGRAM)-program-keypair.json
 KEYPAIR_DST := target/deploy/$(PROGRAM)-keypair.json
 SO          := target/deploy/$(PROGRAM).so
+DEVNET_RPC  ?= https://api.devnet.solana.com
 
 .PHONY: check keypair build test idl localnet deploy-local deploy-devnet upgrade-devnet seed-local seed-devnet smoke-local app clean
 
@@ -41,8 +42,8 @@ upgrade-devnet: build ## upgrade programu na devnecie; gdy program urósł: sola
 seed-local:       ## krąg demo na localnecie (PRESENTER=<adres Phantoma> opcjonalnie)
 	cd app && RPC_URL=http://127.0.0.1:8899 CLUSTER=localnet npm run seed
 
-seed-devnet:      ## krąg demo na devnecie
-	cd app && RPC_URL=https://api.devnet.solana.com CLUSTER=devnet npm run seed
+seed-devnet:      ## krąg demo na devnecie (DEVNET_RPC=<URL Helius> omija limity publicznego RPC)
+	cd app && RPC_URL='$(DEVNET_RPC)' CLUSTER=devnet npm run seed
 
 smoke-local:      ## cały scenariusz demo przez bibliotekę klienta (localnet)
 	cd app && RPC_URL=http://127.0.0.1:8899 CLUSTER=localnet npm run smoke

@@ -18,7 +18,7 @@ const env = Object.fromEntries(
   readFileSync(".env.local", "utf8")
     .trim()
     .split("\n")
-    .map((l) => l.split("=")),
+    .map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]),
 );
 const connection = new Connection(env.VITE_RPC_URL, "confirmed");
 const circle = new PublicKey(env.VITE_CIRCLE);

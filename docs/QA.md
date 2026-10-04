@@ -55,3 +55,34 @@ Jedyna wypłata z Rezerwy (`redeem.rs`): firma z saldem dodatnim wymienia jednos
 **Ograniczenia (MVP):**
 - Wymiana działa w kolejności zgłoszeń: kto pierwszy wymieni, ten dostaje tPLN, dopóki są.
 - `unbacked_loss` jest tylko zapisywana. Podział tej straty między firmy na plusie to następny krok.
+
+---
+
+## 3. Co zrobić, żeby Kwita była gotowa do prawdziwego użycia? (= „co dalej za tydzień?”)
+
+**Na scenę:** Trzy rzeczy: liczyć do limitu tylko sprzedaż netto między parą firm (koniec z nabijaniem w kółko), dać firmom logowanie mailem bez instalowania portfela i bez SOL, i zrobić pilotaż z 5–10 firmami z jednego coworkingu na stablecoinie złotówkowym albo euro.
+
+**Pełna odpowiedź:**
+
+Program (zasady kręgu):
+- **Sprzedaż netto na parę firm:** do limitu liczy się tylko nadwyżka tego, co A sprzedała B, nad tym, co od niej kupiła. Usuwa zmowę z pytania 1.
+- **Okno czasowe dla sprzedaży** (np. 90 dni): limit odzwierciedla bieżącą aktywność, a nie historię sprzed roku.
+- **Podział niepokrytej straty** proporcjonalnie między firmy z saldem dodatnim, zamiast samego zapisu w `unbacked_loss`.
+- **Zamykanie kont przy wyjściu:** zwrot opłaty za miejsce w sieci (ok. 0,001 SOL) i możliwość ponownego dołączenia.
+- **Kręgi zamknięte:** wejście tylko z poręczeniem 1–2 firm z kręgu (opcja przy zakładaniu kręgu).
+- **Uprawnienia:** po audycie odebranie możliwości aktualizacji programu (`set-upgrade-authority --final`) albo przekazanie jej multisigowi (Squads), żeby nikt sam nie mógł zmienić kodu.
+- **Audyt i testy losowe (fuzzing)** przed prawdziwymi pieniędzmi.
+
+Dla firm (użyteczność):
+- **Logowanie mailem / Google z portfelem wbudowanym** i opłatami sieciowymi płaconymi przez aplikację: właściciel kawiarni nie instaluje Phantoma i nie kupuje SOL.
+- **Kaucja w prawdziwym stablecoinie** (PLN, jeśli będzie dostępny, inaczej EURC) i wpłata przez BLIK lub przelew przez bramkę on-ramp.
+- **Płatność kodem QR** (Solana Pay): sprzedawca pokazuje kod, kupujący skanuje telefonem i płaci jednostkami kręgu.
+- **Faktury:** numer z KSeF w każdej płatności (pole już jest) i eksport dla księgowej.
+- **Katalog ofert kręgu:** co kto sprzedaje, żeby firmy z nadwyżką miały na co ją wydać (Sardex robi to ręcznie przez brokerów).
+- **Powiadomienia:** „otrzymałeś płatność”, „zbliża się termin spłaty”.
+
+Prawo i biznes:
+- Sprawdzenie z prawnikiem: wyjątek „ograniczonej sieci” w ustawie o usługach płatniczych, zasada 15 000 zł przez rachunek płatniczy, VAT od transakcji w kręgu.
+- Weryfikacja firm (NIP / KRS / CEIDG) przy wejściu.
+- Regulamin kręgu jako umowa między firmami, która odsyła do zasad zapisanych w programie.
+- Pilotaż: 5–10 firm, które już handlują ze sobą (coworking, lokalne zrzeszenie), 3 miesiące, a potem mierzymy obrót w kręgu i liczbę niewypłacalności.

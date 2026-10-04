@@ -23,3 +23,35 @@ Zbiór pytań, które mogą paść od jury, z odpowiedziami. Każde pytanie ma w
   - Krąg może ustawić niższe parametry (np. 30% zamiast 50%).
 
 ---
+
+## 2. Jak działa Rezerwa kręgu?
+
+**Na scenę:** Rezerwa to „firma bez właściciela” prowadzona przez program. Gdy ktoś wychodzi z kręgu albo znika z długiem, Rezerwa przejmuje jego miejsce w księdze i dostaje jego kaucję w tPLN. Firmy z saldem dodatnim mogą potem wymienić swoje jednostki na te tPLN. Nikt nie ma do niej klucza: wpływy i wypłaty wynikają wyłącznie z reguł programu.
+
+**Pełna odpowiedź:**
+
+Rezerwa ma trzy liczby (konto `Circle`):
+
+| Pole | Co znaczy |
+|---|---|
+| `reserve_balance` | saldo Rezerwy w jednostkach kręgu, liczone jak saldo firmy. Ujemne: Rezerwa przejęła czyjś dług. Dodatnie: ktoś oddał jej swoje jednostki |
+| `reserve_usdc` | ile tPLN w skarbcu należy do Rezerwy (reszta skarbca to kaucje firm) |
+| `unbacked_loss` | dług, którego nie pokryła ani kaucja, ani poręczyciele |
+
+Skąd Rezerwa dostaje środki (`leave.rs`, `declare_default.rs`):
+
+1. **Firma wychodzi z długiem:** Drukarnia ma −50 i wychodzi. Z jej kaucji 50 tPLN trafia do Rezerwy, a Rezerwa przejmuje dług (saldo −50). Reszta kaucji (150) wraca do Drukarni.
+2. **Firma wychodzi z nadwyżką i ją oddaje:** saldo +X przechodzi na Rezerwę jako bufor. tPLN się nie przesuwa.
+3. **Niewypłacalność:** cała kaucja przepada do Rezerwy, nawet ta część, która przewyższa dług (to kara za zniknięcie). Rezerwa przejmuje dług do wysokości kaucji, resztę biorą poręczyciele, a to, czego nie pokryli, idzie do `unbacked_loss`.
+
+Jedyna wypłata z Rezerwy (`redeem.rs`): firma z saldem dodatnim wymienia jednostki na tPLN 1:1, dopóki Rezerwa ma tPLN. Saldo firmy maleje, saldo Rezerwy rośnie o tyle samo, a tPLN przechodzi ze skarbca do firmy.
+
+**Po co to jest:** gdy Drukarnia wychodzi z długiem 50, ktoś w kręgu ma te 50 „na plusie” (np. Biuro), a dłużnika już nie ma. Rezerwa zajmuje miejsce dłużnika i trzyma za nią prawdziwe tPLN z kaucji, więc Biuro może zamienić swoje jednostki na pieniądze. W ten sposób firma z nadwyżką może wyjść do gotówki bez operatora.
+
+**Co zawsze się zgadza (testy po każdym scenariuszu):**
+- suma sald wszystkich firm + saldo Rezerwy = 0;
+- tPLN w skarbcu = kaucje firm + tPLN Rezerwy.
+
+**Ograniczenia (MVP):**
+- Wymiana działa w kolejności zgłoszeń: kto pierwszy wymieni, ten dostaje tPLN, dopóki są.
+- `unbacked_loss` jest tylko zapisywana. Podział tej straty między firmy na plusie to następny krok.

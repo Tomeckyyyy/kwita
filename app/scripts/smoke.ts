@@ -61,7 +61,16 @@ async function main() {
   const ata = await getOrCreateAssociatedTokenAccount(connection, payer, mint, kaw.publicKey);
   await mintTo(connection, payer, mint, ata.address, payer, 1_000 * k.UNIT);
 
-  await step("Kawiarnia dołącza", () => k.join(P(kaw), circle, mint));
+  // Nikt centralny nie decyduje, kto wchodzi: bez zaproszenia program odrzuca, zaprasza firma z kręgu.
+  await expectFail("Kawiarnia dołącza bez zaproszenia", () => k.join(P(kaw), circle, mint), "brak zaproszenia");
+  await step("Biuro zaprasza Kawiarnię", () => k.invite(P(biuro), circle, kaw.publicKey));
+  assert.equal((await k.fetchState(P(payer), circle)).invites.filter((i) => i.invitee.equals(kaw.publicKey)).length, 1);
+  await step("Kawiarnia dołącza z zaproszeniem", () => k.join(P(kaw), circle, mint));
+  assert.equal(
+    (await k.fetchState(P(payer), circle)).invites.filter((i) => i.invitee.equals(kaw.publicKey)).length,
+    0,
+    "zaproszenie zużyte",
+  );
   await step("Kawiarnia kupuje ulotki 150", () => k.pay(P(kaw), circle, druk.publicKey, 150, "FV/1/2026"));
   await expectFail(
     "Kawiarnia kupuje projekt 100",

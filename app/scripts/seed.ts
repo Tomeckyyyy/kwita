@@ -11,7 +11,7 @@ import {
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import { createMint, getOrCreateAssociatedTokenAccount, mintTo } from "@solana/spl-token";
-import { UNIT, createCircle, getProgram, join, pda } from "../src/lib/kwita";
+import { UNIT, createCircle, getProgram, invite, join, pda } from "../src/lib/kwita";
 import { keypairWallet } from "../src/lib/firms";
 
 const RPC = process.env.RPC_URL ?? "http://127.0.0.1:8899";
@@ -37,8 +37,8 @@ async function main() {
   console.log("tPLN mint:", mint.toBase58());
 
   const firms = NAMES.map((name) => ({ name, keypair: Keypair.generate() }));
-  for (const f of firms) {
-    await fund(f.keypair.publicKey, 0.05);
+  for (const [i, f] of firms.entries()) {
+    await fund(f.keypair.publicKey, i === 0 ? 0.1 : 0.05); // pierwsza firma zakłada krąg i płaci za konta
     const ata = await getOrCreateAssociatedTokenAccount(connection, payer, mint, f.keypair.publicKey);
     await mintTo(connection, payer, mint, ata.address, payer, 1_000 * UNIT);
   }
@@ -49,7 +49,11 @@ async function main() {
     console.log("Prezenter (Phantom) zasilony:", PRESENTER.toBase58());
   }
 
-  const creator = getProgram(connection, keypairWallet(payer));
+  // Krąg zakłada pierwsza firma demo (Drukarnia): dołącza bez zaproszenia i zaprasza pozostałe.
+  // Założyciel nie ma żadnych innych uprawnień. Phantoma prezentera seed NIE zaprasza:
+  // w demo zaprasza go na żywo firma z kręgu.
+  const [founder, ...others] = firms;
+  const creator = getProgram(connection, keypairWallet(founder.keypair));
   const id = new BN(Date.now());
   await createCircle(creator, mint, id, {
     deposit: 200,
@@ -59,10 +63,15 @@ async function main() {
     defaultAfterSecs: 60,
     maxPositiveBalance: 1_500,
   });
-  const circle = pda.circle(payer.publicKey, id);
-  console.log("Krąg:", circle.toBase58());
+  const circle = pda.circle(founder.keypair.publicKey, id);
+  console.log(`Krąg: ${circle.toBase58()} (zakłada: ${founder.name})`);
 
-  for (const f of firms) await join(getProgram(connection, keypairWallet(f.keypair)), circle, mint);
+  await join(creator, circle, mint);
+  for (const f of others) {
+    await invite(creator, circle, f.keypair.publicKey);
+    await join(getProgram(connection, keypairWallet(f.keypair)), circle, mint);
+  }
+  console.log(`${founder.name} zaprosiła: ${others.map((f) => f.name).join(", ")}`);
 
   mkdirSync("public", { recursive: true });
   writeFileSync(

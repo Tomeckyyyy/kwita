@@ -104,7 +104,7 @@ function validKey(s: string): PublicKey | null {
 /** Nazwa firmy albo skrócony adres (zaproszone firmy często nie mają jeszcze nazwy). */
 function names(nameOf: (o: string) => string, key: string) {
   const n = nameOf(key);
-  return n.startsWith("Firma ") ? `${n} (${short(key)})` : n;
+  return n.startsWith("Firma ") ? `firma ${short(key)}` : n;
 }
 
 export function ActionPanel({ program, circle, mint, me, myName, members, invites, presenter, nameOf, run, busy, needsWallet }: Props) {
@@ -260,7 +260,7 @@ export function ActionPanel({ program, circle, mint, me, myName, members, invite
           onSubmit={(e) => {
             e.preventDefault();
             const key = validKey(invitee)!;
-            run(`${myName} zaprasza do kręgu firmę ${nameOf(key.toBase58())}`, () => k.invite(program, circle.address, key), INVITE_RULE).then(
+            run(`${myName} zaprasza do kręgu: ${names(nameOf, key.toBase58())}`, () => k.invite(program, circle.address, key), INVITE_RULE).then(
               () => setInvitee(""),
             );
           }}

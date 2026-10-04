@@ -251,6 +251,95 @@ export type Kwita = {
       ]
     },
     {
+      "name": "invite",
+      "discriminator": [
+        242,
+        24,
+        235,
+        225,
+        133,
+        211,
+        189,
+        250
+      ],
+      "accounts": [
+        {
+          "name": "inviter",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle"
+        },
+        {
+          "name": "inviterMember",
+          "docs": [
+            "dostał czytelny błąd zamiast „konto nie istnieje”."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "inviter"
+              }
+            ]
+          }
+        },
+        {
+          "name": "invite",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  118,
+                  105,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "arg",
+                "path": "invitee"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "invitee",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "join",
       "discriminator": [
         206,
@@ -309,6 +398,43 @@ export type Kwita = {
         {
           "name": "vault",
           "writable": true
+        },
+        {
+          "name": "invite",
+          "docs": [
+            "Zaproszenie dla tej firmy. Wymagane, chyba że dołącza założyciel kręgu (pierwszy członek).",
+            "Zużywane przy dołączeniu: konto zamknięte, opłata wraca do zapraszającego."
+          ],
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  118,
+                  105,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "inviter",
+          "writable": true,
+          "optional": true
         },
         {
           "name": "tokenProgram",
@@ -596,6 +722,65 @@ export type Kwita = {
       ]
     },
     {
+      "name": "revokeInvite",
+      "discriminator": [
+        242,
+        199,
+        119,
+        60,
+        153,
+        131,
+        86,
+        153
+      ],
+      "accounts": [
+        {
+          "name": "inviter",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "invite"
+          ]
+        },
+        {
+          "name": "circle"
+        },
+        {
+          "name": "invite",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  118,
+                  105,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "arg",
+                "path": "invitee"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "invitee",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "withdrawGuarantee",
       "discriminator": [
         90,
@@ -718,6 +903,19 @@ export type Kwita = {
       ]
     },
     {
+      "name": "invite",
+      "discriminator": [
+        230,
+        17,
+        253,
+        74,
+        50,
+        78,
+        85,
+        101
+      ]
+    },
+    {
       "name": "member",
       "discriminator": [
         54,
@@ -772,6 +970,19 @@ export type Kwita = {
       ]
     },
     {
+      "name": "inviteRevoked",
+      "discriminator": [
+        174,
+        72,
+        241,
+        73,
+        145,
+        121,
+        20,
+        63
+      ]
+    },
+    {
       "name": "memberDefaulted",
       "discriminator": [
         35,
@@ -782,6 +993,19 @@ export type Kwita = {
         135,
         39,
         136
+      ]
+    },
+    {
+      "name": "memberInvited",
+      "discriminator": [
+        160,
+        10,
+        224,
+        200,
+        65,
+        165,
+        172,
+        75
       ]
     },
     {
@@ -942,6 +1166,26 @@ export type Kwita = {
       "code": 6020,
       "name": "hasReceivedGuarantees",
       "msg": "Firma ma poręczenia od innych firm: poproś poręczycieli o ich wycofanie"
+    },
+    {
+      "code": 6021,
+      "name": "notInvited",
+      "msg": "Nie masz zaproszenia do tego kręgu"
+    },
+    {
+      "code": 6022,
+      "name": "cannotInviteSelf",
+      "msg": "Nie można zaprosić samego siebie"
+    },
+    {
+      "code": 6023,
+      "name": "inviterNotActive",
+      "msg": "Zapraszać może tylko aktywna firma z kręgu"
+    },
+    {
+      "code": 6024,
+      "name": "wrongInviter",
+      "msg": "Konto zapraszającego nie zgadza się z zaproszeniem"
     }
   ],
   "types": [
@@ -1085,6 +1329,53 @@ export type Kwita = {
       }
     },
     {
+      "name": "invite",
+      "docs": [
+        "Zaproszenie do kręgu: wystawia je aktywna firma z kręgu, zużywa `join` zaproszonej firmy."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "inviter",
+            "type": "pubkey"
+          },
+          {
+            "name": "invitee",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "inviteRevoked",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "inviter",
+            "type": "pubkey"
+          },
+          {
+            "name": "invitee",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "member",
       "type": {
         "kind": "struct",
@@ -1164,6 +1455,26 @@ export type Kwita = {
           {
             "name": "unbacked",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "memberInvited",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "inviter",
+            "type": "pubkey"
+          },
+          {
+            "name": "invitee",
+            "type": "pubkey"
           }
         ]
       }
@@ -1325,6 +1636,11 @@ export type Kwita = {
       "name": "guaranteeSeed",
       "type": "bytes",
       "value": "[103, 117, 97, 114, 97, 110, 116, 101, 101]"
+    },
+    {
+      "name": "inviteSeed",
+      "type": "bytes",
+      "value": "[105, 110, 118, 105, 116, 101]"
     },
     {
       "name": "memberSeed",

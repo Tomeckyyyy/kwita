@@ -245,6 +245,95 @@
       ]
     },
     {
+      "name": "invite",
+      "discriminator": [
+        242,
+        24,
+        235,
+        225,
+        133,
+        211,
+        189,
+        250
+      ],
+      "accounts": [
+        {
+          "name": "inviter",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle"
+        },
+        {
+          "name": "inviter_member",
+          "docs": [
+            "dostał czytelny błąd zamiast „konto nie istnieje”."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "inviter"
+              }
+            ]
+          }
+        },
+        {
+          "name": "invite",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  118,
+                  105,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "arg",
+                "path": "invitee"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "invitee",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "join",
       "discriminator": [
         206,
@@ -303,6 +392,43 @@
         {
           "name": "vault",
           "writable": true
+        },
+        {
+          "name": "invite",
+          "docs": [
+            "Zaproszenie dla tej firmy. Wymagane, chyba że dołącza założyciel kręgu (pierwszy członek).",
+            "Zużywane przy dołączeniu: konto zamknięte, opłata wraca do zapraszającego."
+          ],
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  118,
+                  105,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "inviter",
+          "writable": true,
+          "optional": true
         },
         {
           "name": "token_program",
@@ -590,6 +716,65 @@
       ]
     },
     {
+      "name": "revoke_invite",
+      "discriminator": [
+        242,
+        199,
+        119,
+        60,
+        153,
+        131,
+        86,
+        153
+      ],
+      "accounts": [
+        {
+          "name": "inviter",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "invite"
+          ]
+        },
+        {
+          "name": "circle"
+        },
+        {
+          "name": "invite",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  118,
+                  105,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "arg",
+                "path": "invitee"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "invitee",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "withdraw_guarantee",
       "discriminator": [
         90,
@@ -712,6 +897,19 @@
       ]
     },
     {
+      "name": "Invite",
+      "discriminator": [
+        230,
+        17,
+        253,
+        74,
+        50,
+        78,
+        85,
+        101
+      ]
+    },
+    {
       "name": "Member",
       "discriminator": [
         54,
@@ -766,6 +964,19 @@
       ]
     },
     {
+      "name": "InviteRevoked",
+      "discriminator": [
+        174,
+        72,
+        241,
+        73,
+        145,
+        121,
+        20,
+        63
+      ]
+    },
+    {
       "name": "MemberDefaulted",
       "discriminator": [
         35,
@@ -776,6 +987,19 @@
         135,
         39,
         136
+      ]
+    },
+    {
+      "name": "MemberInvited",
+      "discriminator": [
+        160,
+        10,
+        224,
+        200,
+        65,
+        165,
+        172,
+        75
       ]
     },
     {
@@ -936,6 +1160,26 @@
       "code": 6020,
       "name": "HasReceivedGuarantees",
       "msg": "Firma ma poręczenia od innych firm: poproś poręczycieli o ich wycofanie"
+    },
+    {
+      "code": 6021,
+      "name": "NotInvited",
+      "msg": "Nie masz zaproszenia do tego kręgu"
+    },
+    {
+      "code": 6022,
+      "name": "CannotInviteSelf",
+      "msg": "Nie można zaprosić samego siebie"
+    },
+    {
+      "code": 6023,
+      "name": "InviterNotActive",
+      "msg": "Zapraszać może tylko aktywna firma z kręgu"
+    },
+    {
+      "code": 6024,
+      "name": "WrongInviter",
+      "msg": "Konto zapraszającego nie zgadza się z zaproszeniem"
     }
   ],
   "types": [
@@ -1079,6 +1323,53 @@
       }
     },
     {
+      "name": "Invite",
+      "docs": [
+        "Zaproszenie do kręgu: wystawia je aktywna firma z kręgu, zużywa `join` zaproszonej firmy."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "inviter",
+            "type": "pubkey"
+          },
+          {
+            "name": "invitee",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InviteRevoked",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "inviter",
+            "type": "pubkey"
+          },
+          {
+            "name": "invitee",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "Member",
       "type": {
         "kind": "struct",
@@ -1158,6 +1449,26 @@
           {
             "name": "unbacked",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MemberInvited",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "inviter",
+            "type": "pubkey"
+          },
+          {
+            "name": "invitee",
+            "type": "pubkey"
           }
         ]
       }
@@ -1319,6 +1630,11 @@
       "name": "GUARANTEE_SEED",
       "type": "bytes",
       "value": "[103, 117, 97, 114, 97, 110, 116, 101, 101]"
+    },
+    {
+      "name": "INVITE_SEED",
+      "type": "bytes",
+      "value": "[105, 110, 118, 105, 116, 101]"
     },
     {
       "name": "MEMBER_SEED",

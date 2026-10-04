@@ -1,55 +1,60 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { Keypair, PublicKey } from "@solana/web3.js";
-import { errorMessage, fetchState, getProgram, type CircleState, type MemberView, type SignerWallet } from "./lib/kwita";
+import * as k from "./lib/kwita";
+import { describeError, isProgramRejection } from "./lib/errors";
 import { keypairWallet, loadDemoFirms, type DemoFirm } from "./lib/firms";
-import { CircleTable } from "./components/CircleTable";
-import { Actions } from "./components/Actions";
-import { DefaultPanel } from "./components/DefaultPanel";
-import { TxLog, type TxEntry } from "./components/TxLog";
+import { money } from "./lib/format";
+import { Header } from "./components/Header";
+import { ActAs, type Actor } from "./components/ActAs";
+import { Ledger } from "./components/Ledger";
+import { ActionPanel } from "./components/ActionPanel";
+import { Feed, type FeedEntry } from "./components/Feed";
 
 const CIRCLE = import.meta.env.VITE_CIRCLE ? new PublicKey(import.meta.env.VITE_CIRCLE) : null;
 const MINT = import.meta.env.VITE_MINT ? new PublicKey(import.meta.env.VITE_MINT) : null;
-const PRESENTER = "Kawiarnia (Phantom)";
+const PRESENTER_ID = "presenter";
+const PRESENTER_NAME = "Kawiarnia";
 
 export default function App() {
   const { connection } = useConnection();
   const anchorWallet = useAnchorWallet();
   const [firms, setFirms] = useState<DemoFirm[]>([]);
-  const [actingAs, setActingAs] = useState(PRESENTER);
-  const [state, setState] = useState<{ circle: CircleState; members: MemberView[] } | null>(null);
-  const [log, setLog] = useState<TxEntry[]>([]);
+  const [actingAs, setActingAs] = useState(PRESENTER_ID);
+  const [state, setState] = useState<{ circle: k.CircleState; members: k.MemberView[] } | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [feed, setFeed] = useState<FeedEntry[]>([]);
+  const [busy, setBusy] = useState(false);
+  const nextId = useRef(1);
 
   useEffect(() => {
     loadDemoFirms().then(setFirms);
   }, []);
 
-  const wallet: SignerWallet | null = useMemo(() => {
-    if (actingAs === PRESENTER) return anchorWallet ?? null;
+  const wallet: k.SignerWallet | null = useMemo(() => {
+    if (actingAs === PRESENTER_ID) return anchorWallet ?? null;
     const f = firms.find((x) => x.name === actingAs);
     return f ? keypairWallet(f.keypair) : null;
   }, [actingAs, anchorWallet, firms]);
 
-  const program = useMemo(() => (wallet ? getProgram(connection, wallet) : null), [connection, wallet]);
+  const program = useMemo(() => (wallet ? k.getProgram(connection, wallet) : null), [connection, wallet]);
   // Do odczytu stanu wystarczy dowolny portfel (nic nie podpisuje).
-  const readProgram = useMemo(
-    () => getProgram(connection, wallet ?? keypairWallet(Keypair.generate())),
-    [connection, wallet],
-  );
+  const readProgram = useMemo(() => k.getProgram(connection, keypairWallet(Keypair.generate())), [connection]);
 
   const names = useMemo(() => {
     const m = new Map<string, string>(firms.map((f) => [f.keypair.publicKey.toBase58(), f.name]));
-    if (anchorWallet) m.set(anchorWallet.publicKey.toBase58(), "Kawiarnia");
+    if (anchorWallet) m.set(anchorWallet.publicKey.toBase58(), PRESENTER_NAME);
     return m;
   }, [firms, anchorWallet]);
+  const nameOf = useCallback((owner: string) => names.get(owner) ?? `Firma ${owner.slice(0, 4)}`, [names]);
 
   const refresh = useCallback(async () => {
     if (!CIRCLE) return;
     try {
-      setState(await fetchState(readProgram, CIRCLE));
+      setState(await k.fetchState(readProgram, CIRCLE));
+      setLoadError(null);
     } catch (e) {
-      console.error("Odczyt kręgu nie powiódł się", e);
+      setLoadError(describeError(e));
     }
   }, [readProgram]);
 
@@ -61,67 +66,97 @@ export default function App() {
 
   const run = useCallback(
     async (label: string, fn: () => Promise<string>) => {
+      const id = nextId.current++;
+      setBusy(true);
+      setFeed((f) => [{ id, label, status: "pending" }, ...f]);
+      const update = (patch: Partial<FeedEntry>) => setFeed((f) => f.map((e) => (e.id === id ? { ...e, ...patch } : e)));
       try {
         const sig = await fn();
-        setLog((l) => [{ label, sig, at: Date.now() }, ...l]);
+        update({ status: "ok", sig });
       } catch (e) {
-        setLog((l) => [{ label, error: errorMessage(e), at: Date.now() }, ...l]);
+        update({ status: isProgramRejection(e) ? "rejected" : "failed", detail: describeError(e) });
+      } finally {
+        setBusy(false);
+        await refresh();
       }
-      await refresh();
     },
     [refresh],
   );
 
+  const actors: Actor[] = useMemo(() => {
+    const member = (key: string | undefined) => state?.members.find((m) => m.owner.toBase58() === key);
+    const note = (key: string | undefined, fallback: string) => {
+      const m = member(key);
+      if (!m) return fallback;
+      if (m.status !== "active") return m.status === "exited" ? "poza kręgiem" : "niewypłacalna";
+      return `saldo ${m.balance < 0 ? "−" : ""}${money(Math.abs(m.balance))}`;
+    };
+    const presenterKey = anchorWallet?.publicKey.toBase58();
+    return [
+      {
+        id: PRESENTER_ID,
+        name: PRESENTER_NAME,
+        note: presenterKey ? note(presenterKey, "w Phantomie, poza kręgiem") : "połącz Phantoma",
+        available: Boolean(anchorWallet),
+      },
+      ...firms.map((f) => ({
+        id: f.name,
+        name: f.name,
+        note: note(f.keypair.publicKey.toBase58(), "firma demo"),
+        available: true,
+      })),
+    ];
+  }, [firms, anchorWallet, state]);
+
   if (!CIRCLE || !MINT)
     return (
-      <main>
-        <h1>Kwita</h1>
-        <p>
-          Brak VITE_CIRCLE / VITE_MINT: uruchom <code>make seed-local</code>.
+      <main className="page">
+        <p className="setup">
+          Brak adresu kręgu. Uruchom <code>make seed-local</code> albo <code>make seed-devnet</code> i odśwież stronę.
         </p>
       </main>
     );
 
+  const myName = actingAs === PRESENTER_ID ? PRESENTER_NAME : actingAs;
+
   return (
-    <main>
-      <header>
-        <h1>
-          Kwita <small>kredyt kupiecki bez banku</small>
-        </h1>
-        <WalletMultiButton />
-        <label>
-          Działam jako:{" "}
-          <select value={actingAs} onChange={(e) => setActingAs(e.target.value)}>
-            <option>{PRESENTER}</option>
-            {firms.map((f) => (
-              <option key={f.name}>{f.name}</option>
-            ))}
-          </select>
-        </label>
-      </header>
-      {state && <CircleTable circle={state.circle} members={state.members} names={names} />}
+    <main className="page">
+      <Header circle={CIRCLE.toBase58()} />
+      <ActAs actors={actors} selected={actingAs} onSelect={setActingAs} />
+      {loadError && !state && <p className="setup">Nie udało się wczytać kręgu: {loadError}</p>}
       {state && (
-        <>
-          <Actions
-            program={program}
-            circle={CIRCLE}
-            mint={MINT}
-            me={wallet?.publicKey ?? null}
+        <div className="layout">
+          <Ledger
+            circle={state.circle}
             members={state.members}
-            names={names}
-            run={run}
+            nameOf={nameOf}
+            canDeclare={Boolean(program)}
+            busy={busy}
+            onDeclare={(m) =>
+              run(`${myName} ogłasza niewypłacalność firmy ${nameOf(m.owner.toBase58())}`, () =>
+                k.declareDefault(program!, CIRCLE, m.owner),
+              )
+            }
           />
-          <DefaultPanel
-            program={program}
-            circle={CIRCLE}
-            members={state.members}
-            names={names}
-            defaultAfterSecs={state.circle.defaultAfterSecs}
-            run={run}
-          />
-        </>
+          <aside className="side">
+            <ActionPanel
+              key={actingAs}
+              program={program}
+              circle={state.circle}
+              mint={MINT}
+              me={wallet?.publicKey ?? null}
+              myName={myName}
+              members={state.members}
+              nameOf={nameOf}
+              run={run}
+              busy={busy}
+              needsWallet={actingAs === PRESENTER_ID && !anchorWallet}
+            />
+            <Feed entries={feed} />
+          </aside>
+        </div>
       )}
-      <TxLog entries={log} />
+      {!state && !loadError && <p className="setup">Wczytuję krąg z sieci…</p>}
     </main>
   );
 }

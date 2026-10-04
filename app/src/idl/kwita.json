@@ -110,6 +110,10 @@
         {
           "name": "default_after_secs",
           "type": "i64"
+        },
+        {
+          "name": "max_positive_balance",
+          "type": "u64"
         }
       ]
     },
@@ -326,6 +330,7 @@
       "accounts": [
         {
           "name": "owner",
+          "writable": true,
           "signer": true
         },
         {
@@ -460,6 +465,39 @@
               {
                 "kind": "account",
                 "path": "buyer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reverse_pair",
+          "docs": [
+            "Kierunek odwrotny (kupujący jako sprzedawca dla tej samej firmy): do sprzedaży netto."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  105,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "buyer"
+              },
+              {
+                "kind": "account",
+                "path": "seller_member.owner",
+                "account": "Member"
               }
             ]
           }
@@ -888,6 +926,16 @@
       "code": 6018,
       "name": "WrongCircle",
       "msg": "Konto należy do innego kręgu"
+    },
+    {
+      "code": 6019,
+      "name": "PositiveBalanceCap",
+      "msg": "Saldo sprzedawcy przekroczyłoby pułap salda dodatniego"
+    },
+    {
+      "code": 6020,
+      "name": "HasReceivedGuarantees",
+      "msg": "Firma ma poręczenia od innych firm: poproś poręczycieli o ich wycofanie"
     }
   ],
   "types": [
@@ -931,6 +979,13 @@
           {
             "name": "default_after_secs",
             "type": "i64"
+          },
+          {
+            "name": "max_positive_balance",
+            "docs": [
+              "Najwyższe dopuszczalne saldo dodatnie firmy (0 = bez pułapu): jednostki mają krążyć."
+            ],
+            "type": "u64"
           },
           {
             "name": "reserve_balance",
@@ -1174,11 +1229,24 @@
     },
     {
       "name": "Pair",
+      "docs": [
+        "Obroty sprzedawcy z jednym kupującym (konto na kierunek sprzedawca -> kupujący)."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
           {
+            "name": "volume",
+            "docs": [
+              "Łączna sprzedaż sprzedawcy do tego kupującego."
+            ],
+            "type": "u64"
+          },
+          {
             "name": "counted",
+            "docs": [
+              "Ile z tej sprzedaży liczy się teraz do limitu sprzedawcy: min(pułap, sprzedaż netto)."
+            ],
             "type": "u64"
           },
           {

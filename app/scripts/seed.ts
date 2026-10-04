@@ -57,6 +57,7 @@ async function main() {
     perCounterpartyCap: 300,
     maxSalesCredit: 1_000,
     defaultAfterSecs: 60,
+    maxPositiveBalance: 1_500,
   });
   const circle = pda.circle(payer.publicKey, id);
   console.log("Krąg:", circle.toBase58());

@@ -39,6 +39,7 @@ export type CircleParams = {
   perCounterpartyCap: number;
   maxSalesCredit: number;
   defaultAfterSecs: number;
+  maxPositiveBalance: number;
 };
 
 export type CircleState = {
@@ -50,6 +51,7 @@ export type CircleState = {
   perCounterpartyCap: number;
   maxSalesCredit: number;
   defaultAfterSecs: number;
+  maxPositiveBalance: number;
   reserveBalance: number;
   reserveUsdc: number;
   unbackedLoss: number;
@@ -79,6 +81,7 @@ export async function fetchState(program: Program<Kwita>, circle: PublicKey) {
     perCounterpartyCap: fromUnits(c.perCounterpartyCap),
     maxSalesCredit: fromUnits(c.maxSalesCredit),
     defaultAfterSecs: Number(c.defaultAfterSecs.toString()),
+    maxPositiveBalance: fromUnits(c.maxPositiveBalance),
     reserveBalance: fromUnits(c.reserveBalance),
     reserveUsdc: fromUnits(c.reserveUsdc),
     unbackedLoss: fromUnits(c.unbackedLoss),
@@ -104,6 +107,59 @@ export function limitOf(m: MemberView, c: CircleState): number {
 
 const me = (program: Program<Kwita>) => program.provider.publicKey!;
 
+/** Transakcja dotarła do sieci, ale program ją odrzucił. Ma podpis, więc widać ją w Explorerze. */
+export class ProgramRejection extends Error {
+  signature: string;
+  logs: string[];
+  constructor(signature: string, message: string, logs: string[]) {
+    super(message);
+    this.name = "ProgramRejection";
+    this.signature = signature;
+    this.logs = logs;
+  }
+}
+
+/** Decyzja programu z logów: linia "Kwita: ..." albo komunikat błędu Anchora. */
+export function decisionFromLogs(logs: string[]): string | null {
+  const kwita = logs.map((l) => l.match(/Program log: (Kwita: .*)$/)?.[1]).filter(Boolean);
+  if (kwita.length) return kwita[kwita.length - 1]!;
+  const anchor = logs.map((l) => l.match(/Error Message: (.*?)\.?$/)?.[1]).find(Boolean);
+  return anchor ?? null;
+}
+
+type Sendable = { transaction(): Promise<Transaction> };
+
+/**
+ * Podpisuje i wysyła bez symulacji (skipPreflight): także odrzucona transakcja trafia do sieci,
+ * więc decyzję programu widać w Explorerze. Przy błędzie programu rzuca ProgramRejection z podpisem.
+ */
+async function land(program: Program<Kwita>, builder: Sendable): Promise<string> {
+  const provider = program.provider as AnchorProvider;
+  const connection = provider.connection;
+  const tx = await builder.transaction();
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
+  tx.feePayer = provider.wallet.publicKey;
+  tx.recentBlockhash = blockhash;
+  const signed = await provider.wallet.signTransaction(tx);
+  const signature = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: true });
+  const res = await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
+  if (res.value.err) {
+    const logs = await transactionLogs(connection, signature);
+    throw new ProgramRejection(signature, decisionFromLogs(logs) ?? "Program odrzucił transakcję.", logs);
+  }
+  return signature;
+}
+
+/** Logi potwierdzonej transakcji (RPC bywa o chwilę w tyle, więc kilka prób). */
+export async function transactionLogs(connection: Connection, signature: string): Promise<string[]> {
+  for (let i = 0; i < 5; i++) {
+    const t = await connection.getTransaction(signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+    if (t?.meta?.logMessages) return t.meta.logMessages;
+    await new Promise((r) => setTimeout(r, 600));
+  }
+  return [];
+}
+
 export function createCircle(program: Program<Kwita>, mint: PublicKey, id: BN, p: CircleParams) {
   const circle = pda.circle(me(program), id);
   return program.methods
@@ -114,6 +170,7 @@ export function createCircle(program: Program<Kwita>, mint: PublicKey, id: BN, p
       toUnits(p.perCounterpartyCap),
       toUnits(p.maxSalesCredit),
       new BN(p.defaultAfterSecs),
+      toUnits(p.maxPositiveBalance),
     )
     .accountsPartial({
       creator: me(program),
@@ -139,59 +196,62 @@ function tokenAccounts(program: Program<Kwita>, circle: PublicKey, mint: PublicK
 }
 
 export function join(program: Program<Kwita>, circle: PublicKey, mint: PublicKey) {
-  return program.methods
-    .join()
-    .accountsPartial({ ...tokenAccounts(program, circle, mint), systemProgram: SystemProgram.programId })
-    .rpc();
+  return land(
+    program,
+    program.methods
+      .join()
+      .accountsPartial({ ...tokenAccounts(program, circle, mint), systemProgram: SystemProgram.programId }),
+  );
 }
 
 export function pay(program: Program<Kwita>, circle: PublicKey, seller: PublicKey, amount: number, invoiceRef: string) {
-  return program.methods
-    .pay(toUnits(amount), invoiceRef)
-    .accountsPartial({
+  return land(
+    program,
+    program.methods.pay(toUnits(amount), invoiceRef).accountsPartial({
       buyer: me(program),
       circle,
       buyerMember: pda.member(circle, me(program)),
       sellerMember: pda.member(circle, seller),
       pair: pda.pair(circle, seller, me(program)),
+      reversePair: pda.pair(circle, me(program), seller),
       systemProgram: SystemProgram.programId,
-    })
-    .rpc();
+    }),
+  );
 }
 
 export function giveGuarantee(program: Program<Kwita>, circle: PublicKey, beneficiary: PublicKey, amount: number) {
-  return program.methods
-    .giveGuarantee(toUnits(amount))
-    .accountsPartial({
+  return land(
+    program,
+    program.methods.giveGuarantee(toUnits(amount)).accountsPartial({
       guarantor: me(program),
       circle,
       guarantorMember: pda.member(circle, me(program)),
       beneficiaryMember: pda.member(circle, beneficiary),
       guarantee: pda.guarantee(circle, me(program), beneficiary),
       systemProgram: SystemProgram.programId,
-    })
-    .rpc();
+    }),
+  );
 }
 
 export function withdrawGuarantee(program: Program<Kwita>, circle: PublicKey, beneficiary: PublicKey, amount: number) {
-  return program.methods
-    .withdrawGuarantee(toUnits(amount))
-    .accountsPartial({
+  return land(
+    program,
+    program.methods.withdrawGuarantee(toUnits(amount)).accountsPartial({
       guarantor: me(program),
       circle,
       guarantorMember: pda.member(circle, me(program)),
       beneficiaryMember: pda.member(circle, beneficiary),
       guarantee: pda.guarantee(circle, me(program), beneficiary),
-    })
-    .rpc();
+    }),
+  );
 }
 
 export function redeem(program: Program<Kwita>, circle: PublicKey, mint: PublicKey, amount: number) {
-  return program.methods.redeem(toUnits(amount)).accountsPartial(tokenAccounts(program, circle, mint)).rpc();
+  return land(program, program.methods.redeem(toUnits(amount)).accountsPartial(tokenAccounts(program, circle, mint)));
 }
 
 export function leave(program: Program<Kwita>, circle: PublicKey, mint: PublicKey, forfeit: boolean) {
-  return program.methods.leave(forfeit).accountsPartial(tokenAccounts(program, circle, mint)).rpc();
+  return land(program, program.methods.leave(forfeit).accountsPartial(tokenAccounts(program, circle, mint)));
 }
 
 export async function declareDefault(program: Program<Kwita>, circle: PublicKey, target: PublicKey) {
@@ -202,11 +262,13 @@ export async function declareDefault(program: Program<Kwita>, circle: PublicKey,
       { pubkey: g.publicKey, isWritable: true, isSigner: false },
       { pubkey: pda.member(circle, g.account.guarantor), isWritable: true, isSigner: false },
     ]);
-  return program.methods
-    .declareDefault()
-    .accountsPartial({ caller: me(program), circle, member: pda.member(circle, target) })
-    .remainingAccounts(remaining)
-    .rpc();
+  return land(
+    program,
+    program.methods
+      .declareDefault()
+      .accountsPartial({ caller: me(program), circle, member: pda.member(circle, target) })
+      .remainingAccounts(remaining),
+  );
 }
 
 export function errorMessage(e: unknown): string {

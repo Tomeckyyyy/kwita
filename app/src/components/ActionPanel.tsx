@@ -6,7 +6,12 @@ import * as k from "../lib/kwita";
 import { money, signed } from "../lib/format";
 import { Avatar } from "./Avatar";
 
-type Run = (label: string, fn: () => Promise<string>) => Promise<void>;
+type Rule = { text: string; url: string };
+type Run = (label: string, fn: () => Promise<string>, rule?: Rule) => Promise<void>;
+const PAY_RULE: Rule = {
+  text: "Decyzję podjął program w sieci, nie bank ani operator.",
+  url: "https://github.com/Tomeckyyyy/kwita/blob/main/programs/kwita/src/instructions/pay.rs#L77",
+};
 type Tab = "pay" | "guarantee" | "redeem" | "leave";
 
 type Props = {
@@ -143,8 +148,10 @@ export function ActionPanel({ program, circle, mint, me, myName, members, nameOf
           className="op"
           onSubmit={(e) => {
             e.preventDefault();
-            run(`${myName} płaci firmie ${sellerName} ${money(amount)} tPLN (${invoice})`, () =>
-              k.pay(program, circle.address, new PublicKey(seller), amount, invoice),
+            run(
+              `${myName} płaci firmie ${sellerName} ${money(amount)} tPLN (${invoice})`,
+              () => k.pay(program, circle.address, new PublicKey(seller), amount, invoice),
+              PAY_RULE,
             );
           }}
         >

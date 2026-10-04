@@ -1,9 +1,15 @@
-import { errorMessage } from "./kwita";
+import { ProgramRejection, errorMessage } from "./kwita";
 
 /** Czy transakcję odrzucił program Kwity (a nie portfel albo sieć). */
 export function isProgramRejection(e: unknown): boolean {
+  if (e instanceof ProgramRejection) return true;
   const err = e as { error?: { errorCode?: { code?: string } } };
   return Boolean(err?.error?.errorCode?.code);
+}
+
+/** Podpis odrzuconej transakcji (jest w sieci, więc da się ją pokazać w Explorerze). */
+export function rejectionSignature(e: unknown): string | undefined {
+  return e instanceof ProgramRejection ? e.signature : undefined;
 }
 
 export function describeError(e: unknown): string {

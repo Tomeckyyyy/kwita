@@ -816,3 +816,26 @@ input {
     font-size: 2.8rem;
   }
 }
+
+.event-note {
+  font-size: 0.85rem;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.event-rule {
+  font-size: 0.82rem;
+  color: var(--muted);
+  border-left: 2px solid var(--ink);
+  padding-left: 8px;
+  margin: 2px 0;
+}
+
+.event.rejected .event-rule {
+  border-left-color: var(--red);
+}
+
+.event-rule a {
+  color: var(--ink);
+  text-underline-offset: 3px;
+}

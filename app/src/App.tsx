@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import * as k from "./lib/kwita";
-import { describeError, isProgramRejection } from "./lib/errors";
+import { describeError, isProgramRejection, rejectionSignature } from "./lib/errors";
 import { withFreshBlockhash } from "./lib/retry";
 import { keypairWallet, loadDemoFirms, type DemoFirm } from "./lib/firms";
 import { money } from "./lib/format";
@@ -10,12 +10,18 @@ import { Header } from "./components/Header";
 import { ActAs, type Actor } from "./components/ActAs";
 import { Ledger } from "./components/Ledger";
 import { ActionPanel } from "./components/ActionPanel";
-import { Feed, type FeedEntry } from "./components/Feed";
+import { Feed, type FeedEntry, type Rule } from "./components/Feed";
 
 const CIRCLE = import.meta.env.VITE_CIRCLE ? new PublicKey(import.meta.env.VITE_CIRCLE) : null;
 const MINT = import.meta.env.VITE_MINT ? new PublicKey(import.meta.env.VITE_MINT) : null;
 const PRESENTER_ID = "presenter";
 const PRESENTER_NAME = "Kawiarnia";
+const CODE = "https://github.com/Tomeckyyyy/kwita/blob/main/programs/kwita/src/instructions";
+const NO_MIDDLEMAN = "Decyzję podjął program w sieci, nie bank ani operator.";
+export const RULES: Record<string, Rule> = {
+  pay: { text: NO_MIDDLEMAN, url: `${CODE}/pay.rs#L77` },
+  default: { text: "Egzekucja bez sądu i bez operatora: zrobił to program.", url: `${CODE}/declare_default.rs#L29` },
+};
 
 export default function App() {
   const { connection } = useConnection();
@@ -66,10 +72,10 @@ export default function App() {
   }, [refresh]);
 
   const run = useCallback(
-    async (label: string, fn: () => Promise<string>) => {
+    async (label: string, fn: () => Promise<string>, rule?: Rule) => {
       const id = nextId.current++;
       setBusy(true);
-      setFeed((f) => [{ id, label, status: "pending" }, ...f]);
+      setFeed((f) => [{ id, label, status: "pending", rule }, ...f]);
       const update = (patch: Partial<FeedEntry>) => setFeed((f) => f.map((e) => (e.id === id ? { ...e, ...patch } : e)));
       try {
         const sig = await withFreshBlockhash(fn, () =>
@@ -81,14 +87,22 @@ export default function App() {
           }),
         );
         update({ status: "ok", sig, detail: undefined });
+        k.transactionLogs(connection, sig).then((logs) => {
+          const note = k.decisionFromLogs(logs);
+          if (note) update({ note });
+        });
       } catch (e) {
-        update({ status: isProgramRejection(e) ? "rejected" : "failed", detail: describeError(e) });
+        update({
+          status: isProgramRejection(e) ? "rejected" : "failed",
+          detail: describeError(e),
+          sig: rejectionSignature(e),
+        });
       } finally {
         setBusy(false);
         await refresh();
       }
     },
-    [refresh, actingAs],
+    [refresh, actingAs, connection],
   );
 
   const actors: Actor[] = useMemo(() => {
@@ -141,8 +155,10 @@ export default function App() {
             canDeclare={Boolean(program)}
             busy={busy}
             onDeclare={(m) =>
-              run(`${myName} ogłasza niewypłacalność firmy ${nameOf(m.owner.toBase58())}`, () =>
-                k.declareDefault(program!, CIRCLE, m.owner),
+              run(
+                `${myName} ogłasza niewypłacalność firmy ${nameOf(m.owner.toBase58())}`,
+                () => k.declareDefault(program!, CIRCLE, m.owner),
+                RULES.default,
               )
             }
           />

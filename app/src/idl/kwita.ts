@@ -116,6 +116,10 @@ export type Kwita = {
         {
           "name": "defaultAfterSecs",
           "type": "i64"
+        },
+        {
+          "name": "maxPositiveBalance",
+          "type": "u64"
         }
       ]
     },
@@ -332,6 +336,7 @@ export type Kwita = {
       "accounts": [
         {
           "name": "owner",
+          "writable": true,
           "signer": true
         },
         {
@@ -466,6 +471,39 @@ export type Kwita = {
               {
                 "kind": "account",
                 "path": "buyer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reversePair",
+          "docs": [
+            "Kierunek odwrotny (kupujący jako sprzedawca dla tej samej firmy): do sprzedaży netto."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  105,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "buyer"
+              },
+              {
+                "kind": "account",
+                "path": "sellerMember.owner",
+                "account": "member"
               }
             ]
           }
@@ -894,6 +932,16 @@ export type Kwita = {
       "code": 6018,
       "name": "wrongCircle",
       "msg": "Konto należy do innego kręgu"
+    },
+    {
+      "code": 6019,
+      "name": "positiveBalanceCap",
+      "msg": "Saldo sprzedawcy przekroczyłoby pułap salda dodatniego"
+    },
+    {
+      "code": 6020,
+      "name": "hasReceivedGuarantees",
+      "msg": "Firma ma poręczenia od innych firm: poproś poręczycieli o ich wycofanie"
     }
   ],
   "types": [
@@ -937,6 +985,13 @@ export type Kwita = {
           {
             "name": "defaultAfterSecs",
             "type": "i64"
+          },
+          {
+            "name": "maxPositiveBalance",
+            "docs": [
+              "Najwyższe dopuszczalne saldo dodatnie firmy (0 = bez pułapu): jednostki mają krążyć."
+            ],
+            "type": "u64"
           },
           {
             "name": "reserveBalance",
@@ -1180,11 +1235,24 @@ export type Kwita = {
     },
     {
       "name": "pair",
+      "docs": [
+        "Obroty sprzedawcy z jednym kupującym (konto na kierunek sprzedawca -> kupujący)."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
           {
+            "name": "volume",
+            "docs": [
+              "Łączna sprzedaż sprzedawcy do tego kupującego."
+            ],
+            "type": "u64"
+          },
+          {
             "name": "counted",
+            "docs": [
+              "Ile z tej sprzedaży liczy się teraz do limitu sprzedawcy: min(pułap, sprzedaż netto)."
+            ],
             "type": "u64"
           },
           {

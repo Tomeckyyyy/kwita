@@ -679,6 +679,42 @@ input {
   cursor: not-allowed;
 }
 
+/* Zaproszenia */
+.address {
+  display: block;
+  word-break: break-all;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.op h3 {
+  margin: 6px 0 0;
+  font-size: 0.95rem;
+}
+
+.invites {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.invites li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.92rem;
+}
+
+.invites .secondary {
+  padding: 5px 12px;
+  font-size: 0.85rem;
+}
+
 /* Zdarzenia: wpisy w zeszycie, najnowsze na górze. */
 .feed .empty {
   color: var(--muted);

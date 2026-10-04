@@ -28,7 +28,7 @@ export default function App() {
   const anchorWallet = useAnchorWallet();
   const [firms, setFirms] = useState<DemoFirm[]>([]);
   const [actingAs, setActingAs] = useState(PRESENTER_ID);
-  const [state, setState] = useState<{ circle: k.CircleState; members: k.MemberView[] } | null>(null);
+  const [state, setState] = useState<{ circle: k.CircleState; members: k.MemberView[]; invites: k.InviteView[] } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [feed, setFeed] = useState<FeedEntry[]>([]);
   const [busy, setBusy] = useState(false);
@@ -171,6 +171,8 @@ export default function App() {
               me={wallet?.publicKey ?? null}
               myName={myName}
               members={state.members}
+              invites={state.invites}
+              presenter={anchorWallet?.publicKey ?? null}
               nameOf={nameOf}
               run={run}
               busy={busy}

@@ -31,6 +31,7 @@ export const pda = {
     find([seed("pair"), circle.toBuffer(), seller.toBuffer(), buyer.toBuffer()]),
   guarantee: (circle: PublicKey, guarantor: PublicKey, beneficiary: PublicKey) =>
     find([seed("guarantee"), circle.toBuffer(), guarantor.toBuffer(), beneficiary.toBuffer()]),
+  invite: (circle: PublicKey, invitee: PublicKey) => find([seed("invite"), circle.toBuffer(), invitee.toBuffer()]),
 };
 
 export type CircleParams = {
@@ -44,6 +45,8 @@ export type CircleParams = {
 
 export type CircleState = {
   address: PublicKey;
+  /** Założyciel: jedyna firma, która dołącza bez zaproszenia. Poza tym nie ma żadnych uprawnień. */
+  creator: PublicKey;
   mint: PublicKey;
   vault: PublicKey;
   deposit: number;
@@ -69,11 +72,20 @@ export type MemberView = {
   status: "active" | "exited" | "defaulted";
 };
 
+/** Oczekujące (niewykorzystane) zaproszenie do kręgu. */
+export type InviteView = {
+  address: PublicKey;
+  inviter: PublicKey;
+  invitee: PublicKey;
+};
+
 export async function fetchState(program: Program<Kwita>, circle: PublicKey) {
   const c = await program.account.circle.fetch(circle);
-  const ms = await program.account.member.all([{ memcmp: { offset: 8, bytes: circle.toBase58() } }]);
+  const byCircle = [{ memcmp: { offset: 8, bytes: circle.toBase58() } }];
+  const [ms, is] = await Promise.all([program.account.member.all(byCircle), program.account.invite.all(byCircle)]);
   const circleState: CircleState = {
     address: circle,
+    creator: c.creator,
     mint: c.collateralMint,
     vault: c.vault,
     deposit: fromUnits(c.depositAmount),
@@ -97,7 +109,12 @@ export async function fetchState(program: Program<Kwita>, circle: PublicKey) {
     negativeSince: Number(m.negativeSince.toString()),
     status: "active" in m.status ? "active" : "exited" in m.status ? "exited" : "defaulted",
   }));
-  return { circle: circleState, members };
+  const invites: InviteView[] = is.map(({ publicKey, account: i }) => ({
+    address: publicKey,
+    inviter: i.inviter,
+    invitee: i.invitee,
+  }));
+  return { circle: circleState, members, invites };
 }
 
 export function limitOf(m: MemberView, c: CircleState): number {
@@ -195,12 +212,47 @@ function tokenAccounts(program: Program<Kwita>, circle: PublicKey, mint: PublicK
   };
 }
 
-export function join(program: Program<Kwita>, circle: PublicKey, mint: PublicKey) {
+/**
+ * Dołączenie do kręgu. Jeśli jest zaproszenie, idzie z transakcją (program je zużywa, opłata wraca
+ * do zapraszającego). Bez zaproszenia program odrzuci transakcję, chyba że dołącza założyciel.
+ */
+export async function join(program: Program<Kwita>, circle: PublicKey, mint: PublicKey) {
+  const invitePda = pda.invite(circle, me(program));
+  const invite = await program.account.invite.fetchNullable(invitePda);
   return land(
     program,
-    program.methods
-      .join()
-      .accountsPartial({ ...tokenAccounts(program, circle, mint), systemProgram: SystemProgram.programId }),
+    program.methods.join().accountsPartial({
+      ...tokenAccounts(program, circle, mint),
+      invite: invite ? invitePda : null,
+      inviter: invite ? invite.inviter : null,
+      systemProgram: SystemProgram.programId,
+    }),
+  );
+}
+
+/** Zaproszenie firmy do kręgu. Może je wystawić każda aktywna firma z kręgu. */
+export function invite(program: Program<Kwita>, circle: PublicKey, invitee: PublicKey) {
+  return land(
+    program,
+    program.methods.invite(invitee).accountsPartial({
+      inviter: me(program),
+      circle,
+      inviterMember: pda.member(circle, me(program)),
+      invite: pda.invite(circle, invitee),
+      systemProgram: SystemProgram.programId,
+    }),
+  );
+}
+
+/** Wycofanie własnego, niewykorzystanego zaproszenia (opłata za konto wraca do zapraszającego). */
+export function revokeInvite(program: Program<Kwita>, circle: PublicKey, invitee: PublicKey) {
+  return land(
+    program,
+    program.methods.revokeInvite(invitee).accountsPartial({
+      inviter: me(program),
+      circle,
+      invite: pda.invite(circle, invitee),
+    }),
   );
 }
 

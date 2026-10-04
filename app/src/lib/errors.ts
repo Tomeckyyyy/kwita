@@ -9,6 +9,8 @@ export function isProgramRejection(e: unknown): boolean {
 export function describeError(e: unknown): string {
   const msg = errorMessage(e);
   if (/User rejected|rejected the request/i.test(msg)) return "Odrzucono w portfelu.";
-  if (/blockhash|timeout|Failed to fetch|NetworkError/i.test(msg)) return `Problem z siecią: ${msg}`;
+  if (/Blockhash not found|block height exceeded/i.test(msg))
+    return "Transakcja wygasła: zatwierdzenie w portfelu trwało ponad minutę. Spróbuj jeszcze raz i zatwierdź od razu.";
+  if (/timeout|Failed to fetch|NetworkError/i.test(msg)) return `Problem z siecią: ${msg}`;
   return msg;
 }

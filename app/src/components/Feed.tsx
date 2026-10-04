@@ -25,7 +25,9 @@ export function Feed({ entries }: { entries: FeedEntry[] }) {
               </span>
               <div className="event-body">
                 <span className="event-label">{e.label}</span>
-                {e.status === "pending" && <span className="event-detail">Wysyłanie i potwierdzanie w sieci…</span>}
+                {e.status === "pending" && (
+                  <span className="event-detail">{e.detail ?? "Wysyłanie i potwierdzanie w sieci…"}</span>
+                )}
                 {e.status === "rejected" && <span className="event-detail">Program odrzucił: {e.detail}</span>}
                 {e.status === "failed" && <span className="event-detail">Nie wysłano: {e.detail}</span>}
                 {e.sig && (

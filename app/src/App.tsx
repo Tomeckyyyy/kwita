@@ -3,6 +3,7 @@ import { useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import * as k from "./lib/kwita";
 import { describeError, isProgramRejection } from "./lib/errors";
+import { withFreshBlockhash } from "./lib/retry";
 import { keypairWallet, loadDemoFirms, type DemoFirm } from "./lib/firms";
 import { money } from "./lib/format";
 import { Header } from "./components/Header";
@@ -71,8 +72,15 @@ export default function App() {
       setFeed((f) => [{ id, label, status: "pending" }, ...f]);
       const update = (patch: Partial<FeedEntry>) => setFeed((f) => f.map((e) => (e.id === id ? { ...e, ...patch } : e)));
       try {
-        const sig = await fn();
-        update({ status: "ok", sig });
+        const sig = await withFreshBlockhash(fn, () =>
+          update({
+            detail:
+              actingAs === PRESENTER_ID
+                ? "Transakcja wygasła, zanim trafiła do sieci. Zatwierdź ją ponownie w Phantomie."
+                : "Transakcja wygasła, wysyłam ponownie…",
+          }),
+        );
+        update({ status: "ok", sig, detail: undefined });
       } catch (e) {
         update({ status: isProgramRejection(e) ? "rejected" : "failed", detail: describeError(e) });
       } finally {
@@ -80,7 +88,7 @@ export default function App() {
         await refresh();
       }
     },
-    [refresh],
+    [refresh, actingAs],
   );
 
   const actors: Actor[] = useMemo(() => {

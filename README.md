@@ -4,7 +4,9 @@ Projekt na **HackYeah 2026**, wyzwanie **Superteam Poland: Finance Without Inter
 
 Krąg małych firm płaci sobie nawzajem jednostkami kręgu (1 jednostka = 1 tPLN, testowy złoty) zamiast gotówką. Każda firma zaczyna od salda 0 i może zejść na minus do swojego limitu, a dług spłaca sprzedażą do kręgu. Suma sald zawsze wynosi 0, więc nikt nie musi wykładać płynności. To model Sardexu i szwajcarskiego WIR, ale bez operatora: **limit liczy program** (kaucja + 50% sprzedaży do różnych firm + poręczenia), a za ryzyko odpowiadają kaucja w tPLN i poręczyciele.
 
-- Zastępowani pośrednicy: bank (kredyt obrotowy z odsetkami) i operator sieci barterowej, który sam ustala limity.
+Do kręgu wchodzi się tylko z zaproszeniem, a zaprosić może każda firma z kręgu: nie ma admina ani bramkarza.
+
+- Zastępowani pośrednicy: bank (kredyt obrotowy z odsetkami) i operator sieci barterowej, który sam ustala limity i wybiera firmy.
 - Użytkownik docelowy: małe firmy w jednym mieście, które już kupują od siebie usługi (kawiarnia, drukarnia, studio graficzne, biuro rachunkowe).
 - Spec: [`docs/superpowers/specs/2026-10-04-kwita-design.md`](docs/superpowers/specs/2026-10-04-kwita-design.md). Plan: [`docs/superpowers/plans/2026-10-04-kwita.md`](docs/superpowers/plans/2026-10-04-kwita.md). Interfejs program ↔ front: [`docs/INTERFEJS.md`](docs/INTERFEJS.md). Wyzwanie: [`docs/WYZWANIE.md`](docs/WYZWANIE.md).
 
@@ -14,7 +16,7 @@ Krąg małych firm płaci sobie nawzajem jednostkami kręgu (1 jednostka = 1 tPL
 make localnet                 # terminal 1: lokalny walidator
 solana airdrop -ul 100        # terminal 2
 make deploy-local
-make seed-local               # krąg demo + 3 firmy demo; PRESENTER=<adres Phantoma> zasila też Phantoma
+make seed-local               # krąg demo + 3 firmy demo (Drukarnia zakłada i zaprasza resztę); PRESENTER=<adres Phantoma> zasila Phantoma, ale go nie zaprasza
 make app                      # http://localhost:5173
 ```
 

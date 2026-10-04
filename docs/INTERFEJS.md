@@ -13,8 +13,9 @@ Kwoty: jednostki bazowe tokena kaucji (tPLN, 6 miejsc po przecinku; 1 tPLN = 1 0
 | `Member` | `"member"`, circle, owner | `owner`, `balance` (i64), `deposit`, `countedSales`, `guaranteesGiven`, `guaranteesReceived`, `negativeSince` (0 = nie na minusie), `status` (`{active:{}}` / `{exited:{}}` / `{defaulted:{}}`) |
 | `Pair` | `"pair"`, circle, seller (owner), buyer (owner) | `volume` (sprzedaż sprzedawca→kupujący), `counted` (ile liczy się do limitu: min(pułap, sprzedaż netto)) |
 | `Guarantee` | `"guarantee"`, circle, guarantor (owner), beneficiary (owner) | `guarantor`, `beneficiary`, `amount` |
+| `Invite` | `"invite"`, circle, invitee (owner) | `circle`, `inviter`, `invitee`. Oczekujące zaproszenie; `join` je zamyka |
 
-Filtry `getProgramAccounts`: `Member.circle` jest na offsecie 8, `Guarantee.beneficiary` na offsecie 40.
+Filtry `getProgramAccounts`: `Member.circle` i `Invite.circle` są na offsecie 8, `Guarantee.beneficiary` na offsecie 40.
 
 Limit: `deposit + min(maxSalesCredit, countedSales * salesLimitBps / 10000) + guaranteesReceived - guaranteesGiven`; firma może zejść do `balance >= -limit`.
 
@@ -25,7 +26,9 @@ Konta w kolejności z IDL; „S” = podpisuje, „W” = zapisywalne.
 | Instrukcja | Argumenty | Konta |
 |---|---|---|
 | `createCircle` | `circleId: u64, depositAmount: u64, salesLimitBps: u16, perCounterpartyCap: u64, maxSalesCredit: u64, defaultAfterSecs: i64, maxPositiveBalance: u64` | creator (S,W), circle (W), collateralMint, vault (W), tokenProgram, systemProgram |
-| `join` | — | owner (S,W), circle (W), member (W), collateralMint, ownerToken (W, ATA ownera), vault (W), tokenProgram, systemProgram |
+| `invite` | `invitee: pubkey` | inviter (S,W, aktywna firma z kręgu, płaci rent), circle, inviterMember (member zapraszającego), invite (W, PDA dla `invitee`), systemProgram |
+| `revokeInvite` | `invitee: pubkey` | inviter (S,W), circle, invite (W): zamknięte, rent wraca do zapraszającego |
+| `join` | — | owner (S,W), circle (W), member (W), collateralMint, ownerToken (W, ATA ownera), vault (W), invite (W, **opcjonalne**), inviter (W, **opcjonalne**, = `invite.inviter`), tokenProgram, systemProgram. Bez zaproszenia przekaż `null` za oba (wpuszczony zostanie tylko `circle.creator`); z zaproszeniem program je zamyka i zwraca rent zapraszającemu. `join()` w `kwita.ts` sam sprawdza, czy jest zaproszenie |
 | `pay` | `amount: u64, invoiceRef: string (≤ 64 B)` | buyer (S,W), circle, buyerMember (W), sellerMember (W), pair (W, sprzedawca→kupujący), reversePair (W, kupujący→sprzedawca), systemProgram |
 | `giveGuarantee` | `amount: u64` | guarantor (S,W), circle, guarantorMember (W), beneficiaryMember (W), guarantee (W), systemProgram |
 | `withdrawGuarantee` | `amount: u64` | guarantor (S), circle, guarantorMember (W), beneficiaryMember (W), guarantee (W) |
@@ -58,6 +61,12 @@ Konta w kolejności z IDL; „S” = podpisuje, „W” = zapisywalne.
 | 6018 | WrongCircle | konto z innego kręgu |
 | 6019 | PositiveBalanceCap | saldo sprzedawcy przekroczyłoby `maxPositiveBalance` |
 | 6020 | HasReceivedGuarantees | `leave`, gdy inne firmy poręczają za tę firmę |
+| 6021 | NotInvited | `join` bez zaproszenia (i nie jako założyciel) |
+| 6022 | CannotInviteSelf | `invite` samego siebie |
+| 6023 | InviterNotActive | zaprasza firma spoza kręgu, po wyjściu albo niewypłacalna |
+| 6024 | WrongInviter | `inviter` w `join` / `revokeInvite` nie zgadza się z zaproszeniem |
+
+Drugie zaproszenie dla tej samej firmy, zanim pierwsze zostanie zużyte albo wycofane, odrzuca System Program (`already in use`).
 
 ## Logi decyzji
 
@@ -65,7 +74,7 @@ Każda instrukcja zapisuje w logach transakcji zdanie po polsku zaczynające si�
 
 ## Zdarzenia
 
-`CircleCreated`, `MemberJoined`, `PaymentMade { buyer, seller, amount, counted, invoiceRef }`, `GuaranteeChanged`, `Redeemed`, `MemberLeft { coveredDebt, forfeited, refunded }`, `MemberDefaulted { debt, fromDeposit, fromGuarantors, unbacked }`.
+`CircleCreated`, `MemberInvited { inviter, invitee }`, `InviteRevoked`, `MemberJoined`, `PaymentMade { buyer, seller, amount, counted, invoiceRef }`, `GuaranteeChanged`, `Redeemed`, `MemberLeft { coveredDebt, forfeited, refunded }`, `MemberDefaulted { debt, fromDeposit, fromGuarantors, unbacked }`.
 
 ## Przykład (TS, `@anchor-lang/core`)
 
@@ -78,5 +87,6 @@ await program.methods
 
 ## Deploy
 
-- `kwita.so`: 319 152 B, rent-exempt ok. 1,62 SOL (`solana rent 319152`). Deploy na devnet chwilowo potrzebuje ~2× tyle (bufor + program), bufor wraca po deployu.
+- `kwita.so` z zaproszeniami: 404 336 B (wcześniej 354 000 B). Upgrade na devnecie potrzebuje miejsca na +50 336 B: `solana program deploy` z CLI 3.1.10 sam rozszerza konto programu (sprawdzone na localnecie), dodatkowy rent ok. 0,26 SOL (`solana rent 50336`). Na czas upgrade’u bufor potrzebuje ok. 2,05 SOL (`solana rent 404336`), wracają po deployu.
+- Pierwszy deploy: `kwita.so` 319 152 B, rent-exempt ok. 1,62 SOL (`solana rent 319152`). Deploy na devnet chwilowo potrzebuje ~2× tyle (bufor + program), bufor wraca po deployu.
 - Upgrade authority: klucz devnetowy zespołu. Po hackathonie można ją wyłączyć: `solana program set-upgrade-authority <PROGRAM_ID> --final`.

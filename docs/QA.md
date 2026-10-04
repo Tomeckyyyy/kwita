@@ -63,7 +63,7 @@ Program (zasady kręgu):
 - **Okno czasowe dla sprzedaży** (np. 90 dni): limit odzwierciedla bieżącą aktywność, a nie historię sprzed roku.
 - **Podział niepokrytej straty** proporcjonalnie między firmy z saldem dodatnim, zamiast samego zapisu w `unbacked_loss`.
 - **Zamykanie kont przy wyjściu:** zwrot opłaty za miejsce w sieci (ok. 0,001 SOL) i możliwość ponownego dołączenia.
-- **Kręgi zamknięte:** wejście tylko z poręczeniem 1–2 firm z kręgu (opcja przy zakładaniu kręgu).
+- **Silniejsze zaproszenia:** dziś do wejścia wystarczy zaproszenie jednej firmy z kręgu (pytanie 4). Następny krok: zaproszenie połączone z poręczeniem albo wymagane od 2 firm (opcja przy zakładaniu kręgu).
 - **Uprawnienia:** po audycie odebranie możliwości aktualizacji programu (`set-upgrade-authority --final`) albo przekazanie jej multisigowi (Squads), żeby nikt sam nie mógł zmienić kodu.
 - **Audyt i testy losowe (fuzzing)** przed prawdziwymi pieniędzmi.
 
@@ -80,3 +80,17 @@ Prawo i biznes:
 - Weryfikacja firm (NIP / KRS / CEIDG) przy wejściu.
 - Regulamin kręgu jako umowa między firmami, która odsyła do zasad zapisanych w programie.
 - Pilotaż: 5–10 firm, które już handlują ze sobą (coworking, lokalne zrzeszenie), 3 miesiące, a potem mierzymy obrót w kręgu i liczbę niewypłacalności.
+
+---
+
+## 4. Kto decyduje, kto wchodzi do kręgu?
+
+**Na scenę:** Nikt centralny. Do kręgu wchodzi się tylko z zaproszeniem, a zaprosić może **każda** aktywna firma z kręgu. Bez zaproszenia program odrzuca dołączenie, co pokazujemy na żywo: Phantom próbuje wejść, dostaje odmowę, firma z kręgu go zaprasza i dopiero wtedy wchodzi.
+
+**Pełna odpowiedź:**
+
+- **Jak to działa (`invite.rs`, `join.rs`):** `invite` tworzy konto zaproszenia dla adresu portfela nowej firmy. Podpisuje firma z kręgu i płaci za konto (ok. 0,0012 SOL). `join` sprawdza, czy zaproszenie istnieje, i je zużywa: konto jest zamykane, a opłata wraca do zapraszającego. Po wyjściu z kręgu nie da się wrócić na to samo zaproszenie.
+- **Założyciel nie jest adminem:** jedyna różnica jest taka, że dołącza jako pierwszy bez zaproszenia (ktoś musi być pierwszy). Nie może nikogo wyrzucić, zablokować ani cofnąć cudzego zaproszenia. Firma po wyjściu albo niewypłacalna nie może zapraszać.
+- **Dlaczego jedna firma wystarczy:** zaproszenie nie daje kredytu. Nowa firma i tak wpłaca kaucję 200 tPLN i zaczyna z limitem równym kaucji, więc zaproszenie „słabej” firmy nie naraża kręgu na więcej niż jej własna kaucja. Kto chce dać jej większy limit, poręcza własnym limitem.
+- **Czym to się różni od Sardexu:** tam operator wybiera firmy i ustala im limity. W Kwicie sieć rośnie od firm, które już handlują ze sobą, a reguła jest ta sama dla wszystkich i zapisana w programie.
+- **Co dalej:** zaproszenie z poręczeniem albo od 2 firm, weryfikacja NIP/KRS przy wejściu (pytanie 3).
